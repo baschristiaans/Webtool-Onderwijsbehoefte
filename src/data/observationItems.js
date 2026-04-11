@@ -24,6 +24,22 @@ const observationItems = [
     profileIds: ['type1']
   },
   {
+    id: 'obs-seeks-reassurance',
+    domain: 'taakaanpak',
+    domainLabel: 'Taakaanpak en leerhouding',
+    category: 'supporting',
+    prompt: 'De leerling vraagt snel of iets goed genoeg is.',
+    profileIds: ['type1']
+  },
+  {
+    id: 'obs-avoids-harder-option',
+    domain: 'taakaanpak',
+    domainLabel: 'Taakaanpak en leerhouding',
+    category: 'supporting',
+    prompt: 'De leerling kiest niet uit zichzelf voor een moeilijkere taak als de basis lukt.',
+    profileIds: ['type1']
+  },
+  {
     id: 'obs-questions-rules',
     domain: 'reactie-op-aanbod',
     domainLabel: 'Reactie op aanbod en uitdaging',
@@ -45,6 +61,14 @@ const observationItems = [
     domainLabel: 'Reactie op aanbod en uitdaging',
     category: 'supporting',
     prompt: 'De leerling reageert direct of scherp als iets onlogisch of onnodig voelt.',
+    profileIds: ['type2']
+  },
+  {
+    id: 'obs-creative-discussion',
+    domain: 'reactie-op-aanbod',
+    domainLabel: 'Reactie op aanbod en uitdaging',
+    category: 'supporting',
+    prompt: 'De leerling raakt in discussie over de opdracht waardoor de taak naar de achtergrond schuift.',
     profileIds: ['type2']
   },
   {
@@ -112,6 +136,14 @@ const observationItems = [
     profileIds: ['type4']
   },
   {
+    id: 'obs-little-purpose',
+    domain: 'betrokkenheid',
+    domainLabel: 'Betrokkenheid en schoolverbinding',
+    category: 'supporting',
+    prompt: 'De leerling toont weinig inzet zolang de taak voor hem weinig betekenis heeft.',
+    profileIds: ['type4']
+  },
+  {
     id: 'obs-uneven-output',
     domain: 'uitvoering',
     domainLabel: 'Uitvoering en leerproduct',
@@ -157,6 +189,14 @@ const observationItems = [
     domainLabel: 'Zelfsturing en ambitie',
     category: 'supporting',
     prompt: 'De leerling gebruikt fouten als onderdeel van leren in plaats van ze te vermijden.',
+    profileIds: ['type6']
+  },
+  {
+    id: 'obs-independent-stamina',
+    domain: 'zelfsturing',
+    domainLabel: 'Zelfsturing en ambitie',
+    category: 'core',
+    prompt: 'De leerling werkt langere tijd zelfstandig door aan een uitdagende taak.',
     profileIds: ['type6']
   },
   {
