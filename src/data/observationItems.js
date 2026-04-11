@@ -4,7 +4,7 @@ const observationItems = [
     domain: 'taakaanpak',
     domainLabel: 'Taakaanpak en leerhouding',
     category: 'core',
-    prompt: 'De leerling zoekt vaak bevestiging voordat hij begint.',
+    prompt: 'De leerling zoekt vaak bevestiging voordat hij of zij begint.',
     profileIds: ['type1']
   },
   {
@@ -12,7 +12,8 @@ const observationItems = [
     domain: 'taakaanpak',
     domainLabel: 'Taakaanpak en leerhouding',
     category: 'core',
-    prompt: 'De leerling vermijdt taken waarin fouten zichtbaar kunnen worden.',
+    prompt:
+      'De leerling kiest liever taken met een voorspelbare uitkomst dan taken met een grotere kans op fouten.',
     profileIds: ['type1', 'type3']
   },
   {
@@ -20,7 +21,7 @@ const observationItems = [
     domain: 'taakaanpak',
     domainLabel: 'Taakaanpak en leerhouding',
     category: 'supporting',
-    prompt: 'De leerling kiest meestal voor de veilige standaardroute.',
+    prompt: 'De leerling kiest meestal voor een veilige en bekende aanpak.',
     profileIds: ['type1']
   },
   {
@@ -28,7 +29,8 @@ const observationItems = [
     domain: 'taakaanpak',
     domainLabel: 'Taakaanpak en leerhouding',
     category: 'supporting',
-    prompt: 'De leerling vraagt snel of iets goed genoeg is.',
+    prompt:
+      'De leerling zoekt al vroeg bevestiging over de kwaliteit of aanpak van het werk.',
     profileIds: ['type1']
   },
   {
@@ -36,7 +38,17 @@ const observationItems = [
     domain: 'taakaanpak',
     domainLabel: 'Taakaanpak en leerhouding',
     category: 'supporting',
-    prompt: 'De leerling kiest niet uit zichzelf voor een moeilijkere taak als de basis lukt.',
+    prompt:
+      'De leerling kiest niet snel uit zichzelf voor een moeilijkere taak wanneer de basis al lukt.',
+    profileIds: ['type1']
+  },
+  {
+    id: 'obs-works-carefully-to-expectation',
+    domain: 'taakaanpak',
+    domainLabel: 'Taakaanpak en leerhouding',
+    category: 'supporting',
+    prompt:
+      'De leerling werkt zichtbaar zorgvuldig en volgens de gegeven verwachtingen.',
     profileIds: ['type1']
   },
   {
@@ -44,7 +56,7 @@ const observationItems = [
     domain: 'reactie-op-aanbod',
     domainLabel: 'Reactie op aanbod en uitdaging',
     category: 'core',
-    prompt: 'De leerling stelt kritische vragen over regels of aanpak.',
+    prompt: 'De leerling stelt kritische vragen over regels, werkwijzen of aanpak.',
     profileIds: ['type2']
   },
   {
@@ -60,7 +72,8 @@ const observationItems = [
     domain: 'reactie-op-aanbod',
     domainLabel: 'Reactie op aanbod en uitdaging',
     category: 'supporting',
-    prompt: 'De leerling reageert direct of scherp als iets onlogisch of onnodig voelt.',
+    prompt:
+      'De leerling reageert snel en uitgesproken wanneer een taak of regel onlogisch voelt.',
     profileIds: ['type2']
   },
   {
@@ -68,7 +81,8 @@ const observationItems = [
     domain: 'reactie-op-aanbod',
     domainLabel: 'Reactie op aanbod en uitdaging',
     category: 'supporting',
-    prompt: 'De leerling raakt in discussie over de opdracht waardoor de taak naar de achtergrond schuift.',
+    prompt:
+      'De leerling raakt gemakkelijk in discussie over de opdracht, waardoor de taak soms naar de achtergrond schuift.',
     profileIds: ['type2']
   },
   {
@@ -76,15 +90,24 @@ const observationItems = [
     domain: 'reactie-op-aanbod',
     domainLabel: 'Reactie op aanbod en uitdaging',
     category: 'supporting',
-    prompt: 'De leerling wijst extra uitdaging of verrijking af.',
+    prompt: 'De leerling gaat extra uitdaging of verrijking niet gemakkelijk aan.',
     profileIds: ['type3', 'type4']
+  },
+  {
+    id: 'obs-constructive-original-approach',
+    domain: 'reactie-op-aanbod',
+    domainLabel: 'Reactie op aanbod en uitdaging',
+    category: 'supporting',
+    prompt:
+      'De leerling zoekt actief naar een eigen of originele aanpak binnen de opdracht.',
+    profileIds: ['type2']
   },
   {
     id: 'obs-hide-answers',
     domain: 'sociale-zichtbaarheid',
     domainLabel: 'Sociale zichtbaarheid en afstemming',
     category: 'core',
-    prompt: 'De leerling wil niet opvallen met sterke antwoorden.',
+    prompt: 'De leerling houdt sterke antwoorden of inzichten geregeld op de achtergrond.',
     profileIds: ['type3']
   },
   {
@@ -92,7 +115,8 @@ const observationItems = [
     domain: 'sociale-zichtbaarheid',
     domainLabel: 'Sociale zichtbaarheid en afstemming',
     category: 'supporting',
-    prompt: 'De leerling lijkt erbij horen belangrijker te vinden dan zichtbaar sterk presteren.',
+    prompt:
+      'De leerling lijkt sociaal erbij horen belangrijker te vinden dan zichtbaar sterk presteren.',
     profileIds: ['type3']
   },
   {
@@ -100,15 +124,26 @@ const observationItems = [
     domain: 'sociale-zichtbaarheid',
     domainLabel: 'Sociale zichtbaarheid en afstemming',
     category: 'supporting',
-    prompt: 'De leerling houdt zich klein en oogt daardoor eerder gemiddeld dan opvallend sterk.',
+    prompt:
+      'De leerling toont de sterke kant terughoudend, waardoor het functioneren minder opvallend overkomt.',
     profileIds: ['type3', 'type5']
+  },
+  {
+    id: 'obs-shows-strength-when-safe',
+    domain: 'sociale-zichtbaarheid',
+    domainLabel: 'Sociale zichtbaarheid en afstemming',
+    category: 'supporting',
+    prompt:
+      'De leerling laat sterke ideeën of antwoorden wel zien wanneer de setting veilig voelt.',
+    profileIds: ['type3']
   },
   {
     id: 'obs-disengages',
     domain: 'betrokkenheid',
     domainLabel: 'Betrokkenheid en schoolverbinding',
     category: 'core',
-    prompt: 'De leerling haakt af bij herhalende of weinig betekenisvolle taken.',
+    prompt:
+      'De betrokkenheid van de leerling neemt duidelijk af bij herhalende of weinig betekenisvolle taken.',
     profileIds: ['type4', 'type2']
   },
   {
@@ -116,7 +151,7 @@ const observationItems = [
     domain: 'betrokkenheid',
     domainLabel: 'Betrokkenheid en schoolverbinding',
     category: 'supporting',
-    prompt: 'De leerling laat oppositioneel of afwerend gedrag zien richting schoolwerk.',
+    prompt: 'De leerling reageert afwerend of oppositioneel op schoolwerk.',
     profileIds: ['type4']
   },
   {
@@ -124,7 +159,7 @@ const observationItems = [
     domain: 'betrokkenheid',
     domainLabel: 'Betrokkenheid en schoolverbinding',
     category: 'supporting',
-    prompt: 'De leerling levert regelmatig weinig of onvolledig werk in.',
+    prompt: 'De leerling rondt werk regelmatig beperkt of onvolledig af.',
     profileIds: ['type4', 'type5']
   },
   {
@@ -132,7 +167,8 @@ const observationItems = [
     domain: 'betrokkenheid',
     domainLabel: 'Betrokkenheid en schoolverbinding',
     category: 'supporting',
-    prompt: 'De leerling werkt merkbaar beter als een vertrouwde volwassene dichtbij blijft.',
+    prompt:
+      'De leerling werkt merkbaar beter wanneer een vertrouwde volwassene nabij of beschikbaar is.',
     profileIds: ['type4']
   },
   {
@@ -140,7 +176,17 @@ const observationItems = [
     domain: 'betrokkenheid',
     domainLabel: 'Betrokkenheid en schoolverbinding',
     category: 'supporting',
-    prompt: 'De leerling toont weinig inzet zolang de taak voor hem weinig betekenis heeft.',
+    prompt:
+      'De leerling toont weinig inzet zolang de taak voor hem of haar weinig betekenis heeft.',
+    profileIds: ['type4']
+  },
+  {
+    id: 'obs-reengages-with-meaning',
+    domain: 'betrokkenheid',
+    domainLabel: 'Betrokkenheid en schoolverbinding',
+    category: 'supporting',
+    prompt:
+      'De leerling haakt merkbaar aan wanneer een taak betekenisvol of passend uitdagend is.',
     profileIds: ['type4']
   },
   {
@@ -148,7 +194,8 @@ const observationItems = [
     domain: 'uitvoering',
     domainLabel: 'Uitvoering en leerproduct',
     category: 'core',
-    prompt: 'De leerling laat wisselende kwaliteit zien tussen denken en uitvoeren.',
+    prompt:
+      'De leerling laat wisselende kwaliteit zien tussen denken, begrijpen en uitvoeren.',
     profileIds: ['type5']
   },
   {
@@ -156,7 +203,7 @@ const observationItems = [
     domain: 'uitvoering',
     domainLabel: 'Uitvoering en leerproduct',
     category: 'core',
-    prompt: 'De leerling loopt vast op planning of werkorganisatie.',
+    prompt: 'De leerling heeft zichtbaar moeite met planning of werkorganisatie.',
     profileIds: ['type5']
   },
   {
@@ -164,7 +211,17 @@ const observationItems = [
     domain: 'uitvoering',
     domainLabel: 'Uitvoering en leerproduct',
     category: 'supporting',
-    prompt: 'Schriftelijke uitwerking belemmert zichtbaar wat de leerling inhoudelijk kan laten zien.',
+    prompt:
+      'In schriftelijke uitwerking laat de leerling minder zien dan in denken of mondeling redeneren.',
+    profileIds: ['type5']
+  },
+  {
+    id: 'obs-verbal-insight-outpaces-output',
+    domain: 'uitvoering',
+    domainLabel: 'Uitvoering en leerproduct',
+    category: 'supporting',
+    prompt:
+      'De leerling laat in gesprek of mondeling redeneren sterke inhoud zien die in het werk niet altijd zichtbaar wordt.',
     profileIds: ['type5']
   },
   {
@@ -188,7 +245,8 @@ const observationItems = [
     domain: 'zelfsturing',
     domainLabel: 'Zelfsturing en ambitie',
     category: 'supporting',
-    prompt: 'De leerling gebruikt fouten als onderdeel van leren in plaats van ze te vermijden.',
+    prompt:
+      'De leerling gebruikt fouten zichtbaar als onderdeel van leren en bijstellen.',
     profileIds: ['type6']
   },
   {
@@ -196,7 +254,8 @@ const observationItems = [
     domain: 'zelfsturing',
     domainLabel: 'Zelfsturing en ambitie',
     category: 'core',
-    prompt: 'De leerling werkt langere tijd zelfstandig door aan een uitdagende taak.',
+    prompt:
+      'De leerling werkt langere tijd zelfstandig door aan een uitdagende taak.',
     profileIds: ['type6']
   },
   {
@@ -236,7 +295,8 @@ const observationItems = [
     domain: 'contextsignalen',
     domainLabel: 'Contextsignalen in school',
     category: 'context',
-    prompt: 'De leerling functioneert sterker bij cognitief of inhoudelijk passende peers.',
+    prompt:
+      'De leerling functioneert sterker bij cognitief of inhoudelijk passende peers.',
     profileIds: ['type1', 'type2', 'type3', 'type6']
   }
 ];

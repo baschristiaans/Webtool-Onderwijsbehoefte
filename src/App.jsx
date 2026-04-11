@@ -139,7 +139,7 @@ const TESTS_INITIAL = {
 const NOTES_INITIAL = '';
 
 const EMPTY_OBSERVATIONS = Object.fromEntries(
-  observationItems.map((item) => [item.id, 0])
+  observationItems.map((item) => [item.id, null])
 );
 
 function toDisplay(text) {
@@ -306,7 +306,10 @@ function App() {
   const [isDisclaimerConfirmed, setIsDisclaimerConfirmed] = useState(false);
 
   const answeredObservationCount = useMemo(
-    () => Object.values(observationAnswers).filter((value) => value > 0).length,
+    () =>
+      Object.values(observationAnswers).filter(
+        (value) => value !== null && value !== undefined
+      ).length,
     [observationAnswers]
   );
 
@@ -340,10 +343,9 @@ function App() {
         interpretation,
         profilesById,
         contextInput,
-        homeInput,
-        zoovSignal
+        homeInput
       }),
-    [profileBase, interpretation, profilesById, contextInput, homeInput, zoovSignal]
+    [profileBase, interpretation, profilesById, contextInput, homeInput]
   );
 
   const bestProfile = profilesById[profileBase.topProfileId];
@@ -503,7 +505,12 @@ function App() {
     if (step.domain) {
       const group = observationGroups.find((item) => item.domain === step.domain);
       if (!group) return true;
-      return group.items.some((item) => observationAnswers[item.id] > 0);
+
+      return group.items.every(
+        (item) =>
+          observationAnswers[item.id] !== null &&
+          observationAnswers[item.id] !== undefined
+      );
     }
 
     return true;
@@ -746,7 +753,8 @@ function App() {
 
         <p className="helper-text">
           Beoordeel per uitspraak hoe zichtbaar dit gedrag of functioneren op dit
-          moment is.
+          moment is. Ook ‘0 = niet waargenomen’ is een geldige keuze. Je kunt pas
+          verder wanneer alle uitspraken op deze pagina bewust zijn ingevuld.
         </p>
 
         <div className="observation-list">
