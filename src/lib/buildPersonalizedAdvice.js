@@ -284,10 +284,6 @@ export default function buildPersonalizedAdvice({
     areaScores.Groepsgenoten += 1;
   }
 
-  if (zoovSignal.status === 'yes') {
-    areaScores.Leerkracht += 1;
-  }
-
   const prioritizedAreaNames = buildPrioritizedAreaNames(
     areaScores,
     activeContextSignals
@@ -439,12 +435,6 @@ export default function buildPersonalizedAdvice({
   if (homeInput.pattern !== 'unknown' || homeInput.summary.trim()) {
     followUpSteps.push(
       'Neem informatie van thuis mee als context voor verdere duiding, zonder die informatie direct mee te laten tellen in de profielscore.'
-    );
-  }
-
-  if (zoovSignal.status === 'yes') {
-    followUpSteps.push(
-      'Gebruik ZOOV+ als startsignaal om observaties en toetsgegevens gericht naast elkaar te blijven leggen, niet als profielbewijs op zichzelf.'
     );
   }
 

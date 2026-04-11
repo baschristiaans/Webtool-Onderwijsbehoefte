@@ -192,14 +192,6 @@ export function analyzeRichInterpretation({
   const discrepancySignals = [];
   const interpretationSignals = [...profileBase.contextSignals];
 
-  if (zoovSignal.status === 'yes') {
-    interpretationSignals.push({
-      id: 'zoov-startsignal',
-      prompt: 'ZOOV+ geeft een startsignaal dat deze leerling nader bekeken moet worden.',
-      strength: 3
-    });
-  }
-
   if (contextInput.settingDifference !== 'unknown') {
     interpretationSignals.push({
       id: 'setting-difference',
@@ -255,20 +247,6 @@ export function analyzeRichInterpretation({
     performanceSummary = `Toetsbeeld op basis van ingevulde gegevens: ${performanceLabel}. ${summarizeTestLabels(
       knownTests
     )}.`;
-  }
-
-  if (
-    zoovSignal.status === 'yes' &&
-    profileBase.topScore >= PROFILE_DIRECTION_THRESHOLDS.minimumTopScore &&
-    [
-      'grillig of gemengd prestatiebeeld',
-      'zwak of kwetsbaar prestatiebeeld',
-      'discrepantie tussen inzicht en basisvaardigheid'
-    ].includes(performanceLabel)
-  ) {
-    discrepancySignals.push(
-      'ZOOV+ in combinatie met sterke observaties en het toetsbeeld wijst op een mogelijke discrepantie.'
-    );
   }
 
   if (
