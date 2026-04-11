@@ -61,8 +61,8 @@ const AREA_BOOSTS = {
 */
 const CONTEXT_SIGNAL_AREA_WEIGHTS = {
   'ctx-small-group-stronger': {
-    Leeromgeving: 3,
-    Groepsgenoten: 2,
+    Leeromgeving: 4,
+    Groepsgenoten: 3,
     Feedback: 1
   },
   'ctx-opens-up-with-choice': {
@@ -161,6 +161,17 @@ function getPrimaryContextArea(signalId) {
   return Object.entries(weights).sort((left, right) => right[1] - left[1])[0][0];
 }
 
+function getForcedContextAreas(signal) {
+  if (signal.strength < 2) return [];
+
+  if (signal.id === 'ctx-small-group-stronger') {
+    return ['Leeromgeving', 'Groepsgenoten'];
+  }
+
+  const primaryArea = getPrimaryContextArea(signal.id);
+  return primaryArea ? [primaryArea] : [];
+}
+
 function findRelevantContextSignalForArea(contextSignals, area) {
   const matchingSignals = contextSignals.filter((signal) =>
     Object.prototype.hasOwnProperty.call(
@@ -190,20 +201,17 @@ function buildPrioritizedAreaNames(areaScores, activeContextSignals) {
 
   const prioritized = sortedAreas.slice(0, 4);
 
-  const forcedPrimaryAreas = unique(
-    activeContextSignals
-      .filter((signal) => signal.strength >= 2)
-      .map((signal) => getPrimaryContextArea(signal.id))
-      .filter(Boolean)
+  const forcedAreas = unique(
+    activeContextSignals.flatMap((signal) => getForcedContextAreas(signal))
   );
 
-  forcedPrimaryAreas.forEach((forcedArea) => {
+  forcedAreas.forEach((forcedArea) => {
     if (prioritized.includes(forcedArea)) return;
 
     const replaceIndex = prioritized
       .map((area, index) => ({ area, index, score: areaScores[area] }))
       .sort((left, right) => left.score - right.score)
-      .find((item) => !forcedPrimaryAreas.includes(item.area))?.index;
+      .find((item) => !forcedAreas.includes(item.area))?.index;
 
     if (replaceIndex !== undefined) {
       prioritized[replaceIndex] = forcedArea;
@@ -218,8 +226,7 @@ export default function buildPersonalizedAdvice({
   interpretation,
   profilesById,
   contextInput,
-  homeInput,
-  zoovSignal
+  homeInput
 }) {
   const topProfile = profilesById[profileBase.topProfileId];
   const overlapProfile = profileBase.overlapProfileId
