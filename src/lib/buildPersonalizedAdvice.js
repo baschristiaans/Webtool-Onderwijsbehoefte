@@ -53,6 +53,35 @@ const AREA_BOOSTS = {
   selfDirection: ['Leerstof en opdrachten', 'Leeractiviteiten', 'Leerkracht']
 };
 
+const CONTEXT_SIGNAL_AREA_BOOSTS = {
+  'ctx-small-group-stronger': ['Leeromgeving', 'Groepsgenoten', 'Feedback'],
+  'ctx-opens-up-with-choice': [
+    'Leeractiviteiten',
+    'Leerstof en opdrachten',
+    'Instructie'
+  ],
+  'ctx-peer-match-helps': ['Groepsgenoten', 'Leeromgeving'],
+  'ctx-drops-with-repetition': [
+    'Leerstof en opdrachten',
+    'Leeractiviteiten',
+    'Instructie'
+  ],
+  'ctx-oral-written-gap': ['Instructie', 'Leeractiviteiten', 'Feedback']
+};
+
+const CONTEXT_SIGNAL_REASON_TEXT = {
+  'ctx-small-group-stronger':
+    'De leerling laat in een kleinere of veiligere setting meer zien.',
+  'ctx-opens-up-with-choice':
+    'De leerling toont meer betrokkenheid wanneer er keuzevrijheid is.',
+  'ctx-peer-match-helps':
+    'De leerling functioneert sterker bij cognitief of inhoudelijk passende peers.',
+  'ctx-drops-with-repetition':
+    'De leerling zakt zichtbaar weg bij herhalende of te makkelijke taken.',
+  'ctx-oral-written-gap':
+    'De leerling laat in gesprek meer zien dan in schriftelijk werk.'
+};
+
 function unique(items) {
   return [...new Set(items)];
 }
@@ -89,6 +118,20 @@ function summarizeObservations(observations) {
     .join('; ');
 }
 
+function getContextBoostAmount(strength) {
+  if (strength === 3) return 3;
+  if (strength === 2) return 2;
+  return 1;
+}
+
+function findRelevantContextSignalForArea(contextSignals, area) {
+  return (
+    contextSignals.find((signal) =>
+      (CONTEXT_SIGNAL_AREA_BOOSTS[signal.id] || []).includes(area)
+    ) || null
+  );
+}
+
 export default function buildPersonalizedAdvice({
   profileBase,
   interpretation,
@@ -104,6 +147,10 @@ export default function buildPersonalizedAdvice({
   const topNeedMap = getNeedMap(topProfile);
   const overlapNeedMap = overlapProfile ? getNeedMap(overlapProfile) : {};
   const areaScores = createAreaScoreMap();
+
+  const activeContextSignals = profileBase.contextSignals.filter(
+    (signal) => signal.id in CONTEXT_SIGNAL_AREA_BOOSTS
+  );
 
   PROFILE_PRIORITY_AREAS[topProfile.id].forEach((area, index) => {
     areaScores[area] += 10 - index;
@@ -147,6 +194,13 @@ export default function buildPersonalizedAdvice({
     boostAreas(areaScores, AREA_BOOSTS.selfDirection, 2);
   }
 
+  activeContextSignals.forEach((signal) => {
+    const boostedAreas = CONTEXT_SIGNAL_AREA_BOOSTS[signal.id];
+    if (boostedAreas) {
+      boostAreas(areaScores, boostedAreas, getContextBoostAmount(signal.strength));
+    }
+  });
+
   if (contextInput.settingDifference !== 'unknown') {
     areaScores.Leeromgeving += 1;
     areaScores.Groepsgenoten += 1;
@@ -167,11 +221,27 @@ export default function buildPersonalizedAdvice({
   const prioritizedNeeds = prioritizedAreaNames.map((area) => {
     const primaryNeed = topNeedMap[area];
     const overlapNeed = overlapNeedMap[area];
-    const reasonParts = [`Sluit aan bij ${normalizeText(topProfile.shortTitle).toLowerCase()}.`];
+    const reasonParts = [
+      `Sluit aan bij ${normalizeText(topProfile.shortTitle).toLowerCase()}.`
+    ];
 
     if (overlapNeed) {
       reasonParts.push(
-        `Wordt extra relevant door overlap met ${normalizeText(overlapProfile.shortTitle).toLowerCase()}.`
+        `Wordt extra relevant door overlap met ${normalizeText(
+          overlapProfile.shortTitle
+        ).toLowerCase()}.`
+      );
+    }
+
+    const relevantContextSignal = findRelevantContextSignalForArea(
+      activeContextSignals,
+      area
+    );
+
+    if (relevantContextSignal) {
+      reasonParts.push(
+        CONTEXT_SIGNAL_REASON_TEXT[relevantContextSignal.id] ||
+          normalizeText(relevantContextSignal.prompt)
       );
     }
 
@@ -181,14 +251,18 @@ export default function buildPersonalizedAdvice({
         signal.toLowerCase().includes('schriftelijke output')
       )
     ) {
-      reasonParts.push('Helpt om denken zichtbaar te maken zonder dat schriftelijke uitvoering direct blokkeert.');
+      reasonParts.push(
+        'Helpt om denken zichtbaar te maken zonder dat schriftelijke uitvoering direct blokkeert.'
+      );
     }
 
     if (
       area === 'Leeromgeving' &&
       contextInput.settingDifference !== 'unknown'
     ) {
-      reasonParts.push('De setting lijkt invloed te hebben op wat deze leerling laat zien.');
+      reasonParts.push(
+        'De setting lijkt invloed te hebben op wat deze leerling laat zien.'
+      );
     }
 
     if (
@@ -197,13 +271,17 @@ export default function buildPersonalizedAdvice({
         signal.toLowerCase().includes('onderprestatie')
       )
     ) {
-      reasonParts.push('Een beschikbare en heldere leerkracht is hier waarschijnlijk de ingang tot herstel van betrokkenheid.');
+      reasonParts.push(
+        'Een beschikbare en heldere leerkracht is hier waarschijnlijk de ingang tot herstel van betrokkenheid.'
+      );
     }
 
     const adviceText = overlapNeed
       ? `${normalizeText(primaryNeed.advice)} Daarnaast is het helpend om ook mee te nemen dat ${normalizeText(
           overlapNeed.advice
-        ).charAt(0).toLowerCase()}${normalizeText(overlapNeed.advice).slice(1)}`
+        )
+          .charAt(0)
+          .toLowerCase()}${normalizeText(overlapNeed.advice).slice(1)}`
       : normalizeText(primaryNeed.advice);
 
     return {
@@ -312,4 +390,3 @@ export default function buildPersonalizedAdvice({
       'Dit blijft een werkhypothese. Observeerbaar functioneren vormt de profielbasis; context, thuissituatie, ZOOV+ en toetsgegevens scherpen alleen de interpretatie aan.'
   };
 }
-
