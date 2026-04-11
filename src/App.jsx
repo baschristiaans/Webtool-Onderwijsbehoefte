@@ -424,26 +424,26 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header className="hero">
-        <div className="container hero-layout single-hero">
-          <div className="hero-main">
-            <p className="eyebrow">Webtool profielduiding</p>
-            <h1>Observeerbaar functioneren eerst, interpretatie daarna</h1>
-            <p className="intro">
-              Deze tool ondersteunt leerkrachten bij het vormen van een
-              werkhypothese over profielrichting, overlap, prestatiebeeld en
-              onderwijsbehoeften. De ruwe profielscore komt alleen voort uit
-              observeerbaar functioneren in de schoolcontext.
-            </p>
-            <div className="meta-pills">
-              <span className="pill">
-                {answeredObservationCount} observaties ingevuld
-              </span>
-              <span className="pill">{profileBase.profileDirectionLabel}</span>
-            </div>
-          </div>
-        </div>
-      </header>
+<header className="hero">
+  <div className="container hero-layout single-hero">
+    <div className="hero-main">
+      <p className="eyebrow">Webtool profielduiding</p>
+      <h1>HB Profiel & Onderwijsbehoefte</h1>
+      <p className="intro">
+        Deze tool ondersteunt leerkrachten bij het vormen van een
+        werkhypothese over profielrichting, overlap, prestatiebeeld en
+        onderwijsbehoeften. De ruwe profielscore komt alleen voort uit
+        observeerbaar functioneren in de schoolcontext.
+      </p>
+      <div className="meta-pills">
+        <span className="pill">
+          {answeredObservationCount} observaties ingevuld
+        </span>
+        <span className="pill">{profileBase.profileDirectionLabel}</span>
+      </div>
+    </div>
+  </div>
+</header>
 
       <main className="container app-layout">
         <section className="input-column">
