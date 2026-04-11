@@ -208,7 +208,7 @@ function buildExportText({
     `Datum: ${student.date || '-'}`,
     '',
     'ZOOV+ startsignaal',
-    `Status: ${zoovSignal.status}`,
+    `Status: ${TEST_EXPORT_LABELS[zoovSignal.status] || zoovSignal.status}`,
     `Notitie: ${zoovSignal.note || '-'}`,
     '',
     'Context',
@@ -223,13 +223,14 @@ function buildExportText({
     '',
     'Toetsgegevens',
     ...Object.entries(testScores).map(
-      ([key, value]) => `${TEST_FIELD_LABELS[key]}: ${TEST_EXPORT_LABELS[value] || value}`
+      ([key, value]) =>
+        `${TEST_FIELD_LABELS[key]}: ${TEST_EXPORT_LABELS[value] || value}`
     ),
     '',
     'Profieluitkomst',
-`Voorlopig best passend profiel: ${formatProfileHeading(bestProfile)}`,
-`Profieloverlap: ${overlapProfile ? formatProfileHeading(overlapProfile) : '-'}`,
-'',
+    `Voorlopig best passend profiel: ${formatProfileHeading(bestProfile)}`,
+    `Profieloverlap: ${overlapProfile ? formatProfileHeading(overlapProfile) : '-'}`,
+    '',
     'Score-overzicht per profiel',
     ...scoreOverview.map(
       (item) => `${item.shortTitle} - ${item.title}: ${item.score}`
@@ -300,6 +301,9 @@ function App() {
   const [observationAnswers, setObservationAnswers] = useState(EMPTY_OBSERVATIONS);
   const [notes, setNotes] = useState(NOTES_INITIAL);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isChecklistConfirmed, setIsChecklistConfirmed] = useState(false);
+  const [isDisclaimerConfirmed, setIsDisclaimerConfirmed] = useState(false);
 
   const answeredObservationCount = useMemo(
     () => Object.values(observationAnswers).filter((value) => value > 0).length,
@@ -345,6 +349,55 @@ function App() {
   const bestProfile = profilesById[profileBase.topProfileId];
   const overlapProfile = profileBase.overlapProfileId
     ? profilesById[profileBase.overlapProfileId]
+    : null;
+
+  const steps = useMemo(() => {
+    const baseSteps = [
+      {
+        key: 'student',
+        title: 'Leerlinggegevens en startsituatie',
+        shortTitle: 'Stap 1'
+      },
+      {
+        key: 'tests',
+        title: 'Toetsscores IEP / CITO',
+        shortTitle: 'Stap 2'
+      },
+      {
+        key: 'context',
+        title: 'Context en thuissituatie',
+        shortTitle: 'Stap 3'
+      }
+    ];
+
+    const observationSteps = observationGroups.map((group, index) => ({
+      key: `observations-${group.domain}`,
+      title: group.label,
+      shortTitle: `Observaties ${index + 1}`,
+      domain: group.domain
+    }));
+
+    return [
+      ...baseSteps,
+      ...observationSteps,
+      {
+        key: 'review',
+        title: 'Controle en kanttekening',
+        shortTitle: 'Controle'
+      },
+      {
+        key: 'results',
+        title: 'Uitkomst',
+        shortTitle: 'Resultaat'
+      }
+    ];
+  }, [observationGroups]);
+
+  const reviewStepIndex = steps.findIndex((step) => step.key === 'review');
+  const resultStepIndex = steps.findIndex((step) => step.key === 'results');
+  const currentStepConfig = steps[currentStep];
+  const currentObservationGroup = currentStepConfig?.domain
+    ? observationGroups.find((group) => group.domain === currentStepConfig.domain)
     : null;
 
   useEffect(() => {
@@ -396,6 +449,9 @@ function App() {
     setObservationAnswers(EMPTY_OBSERVATIONS);
     setNotes(NOTES_INITIAL);
     setIsProfileModalOpen(false);
+    setCurrentStep(0);
+    setIsChecklistConfirmed(false);
+    setIsDisclaimerConfirmed(false);
   };
 
   const handleExport = () => {
@@ -421,442 +477,598 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  function isStepComplete(step) {
+    if (!step) return false;
+
+    if (step.key === 'student') {
+      return Boolean(student.name.trim() && student.group.trim() && student.observer.trim());
+    }
+
+    if (step.key === 'tests') {
+      return true;
+    }
+
+    if (step.key === 'context') {
+      return true;
+    }
+
+    if (step.key === 'review') {
+      return isChecklistConfirmed && isDisclaimerConfirmed;
+    }
+
+    if (step.key === 'results') {
+      return true;
+    }
+
+    if (step.domain) {
+      const group = observationGroups.find((item) => item.domain === step.domain);
+      if (!group) return true;
+      return group.items.some((item) => observationAnswers[item.id] > 0);
+    }
+
+    return true;
+  }
+
+  const canGoNext = isStepComplete(currentStepConfig);
+  const canGoBack = currentStep > 0;
+
+  const handleNext = () => {
+    if (!canGoNext || currentStep >= steps.length - 1) return;
+    setCurrentStep((value) => value + 1);
+  };
+
+  const handlePrevious = () => {
+    if (!canGoBack) return;
+    setCurrentStep((value) => value - 1);
+  };
+
+  function renderStudentStep() {
+    return (
+      <article className="panel">
+        <div className="panel-head">
+          <div>
+            <p className="section-label">Stap 1</p>
+            <h2>Leerlinggegevens en startsituatie</h2>
+          </div>
+        </div>
+
+        <div className="field-grid two-columns">
+          <label className="field">
+            <span>Naam leerling</span>
+            <input
+              type="text"
+              value={student.name}
+              onChange={(event) => handleStudentChange('name', event.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Groep</span>
+            <input
+              type="text"
+              value={student.group}
+              onChange={(event) => handleStudentChange('group', event.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Ingevuld door</span>
+            <input
+              type="text"
+              value={student.observer}
+              onChange={(event) => handleStudentChange('observer', event.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Datum</span>
+            <input
+              type="date"
+              value={student.date}
+              onChange={(event) => handleStudentChange('date', event.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="secondary-block">
+          <p className="section-label">Startsituatie</p>
+          <div className="field-grid">
+            <label className="field">
+              <span>ZOOV+</span>
+              <select
+                value={zoovSignal.status}
+                onChange={(event) => handleZoovChange('status', event.target.value)}
+              >
+                {ZOOV_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Korte notitie</span>
+              <textarea
+                rows="3"
+                value={zoovSignal.note}
+                onChange={(event) => handleZoovChange('note', event.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
+  function renderTestsStep() {
+    return (
+      <article className="panel">
+        <div className="panel-head">
+          <div>
+            <p className="section-label">Stap 2</p>
+            <h2>Toetsscores IEP / CITO</h2>
+          </div>
+        </div>
+        <p className="helper-text">
+          Vul hier het prestatiebeeld in. Deze gegevens tellen niet mee in de ruwe
+          profielscore, maar worden later gebruikt voor prestatiebeeld en
+          discrepantiesignalen.
+        </p>
+        <div className="field-grid two-columns">
+          {Object.entries(TEST_FIELD_LABELS).map(([key, label]) => (
+            <label className="field" key={key}>
+              <span>{label}</span>
+              <select
+                value={testScores[key]}
+                onChange={(event) => handleTestChange(key, event.target.value)}
+              >
+                {TEST_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
+      </article>
+    );
+  }
+
+  function renderContextStep() {
+    return (
+      <article className="panel">
+        <div className="panel-head">
+          <div>
+            <p className="section-label">Stap 3</p>
+            <h2>Context en thuissituatie</h2>
+          </div>
+        </div>
+
+        <div className="field-grid">
+          <label className="field">
+            <span>Reactie op uitdaging</span>
+            <select
+              value={contextInput.challengeResponse}
+              onChange={(event) =>
+                handleContextChange('challengeResponse', event.target.value)
+              }
+            >
+              {CHALLENGE_RESPONSE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Verschillen tussen settings</span>
+            <select
+              value={contextInput.settingDifference}
+              onChange={(event) =>
+                handleContextChange('settingDifference', event.target.value)
+              }
+            >
+              {SETTING_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Mondeling en schriftelijk functioneren</span>
+            <select
+              value={contextInput.expressionDifference}
+              onChange={(event) =>
+                handleContextChange('expressionDifference', event.target.value)
+              }
+            >
+              {EXPRESSION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Aanvullende schoolcontext</span>
+            <textarea
+              rows="3"
+              value={contextInput.note}
+              onChange={(event) => handleContextChange('note', event.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="secondary-block">
+          <p className="section-label">Thuissituatie</p>
+          <div className="field-grid">
+            <label className="field">
+              <span>Verhouding tot schoolbeeld</span>
+              <select
+                value={homeInput.pattern}
+                onChange={(event) => handleHomeChange('pattern', event.target.value)}
+              >
+                {HOME_PATTERN_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Korte samenvatting thuissituatie</span>
+              <textarea
+                rows="3"
+                value={homeInput.summary}
+                onChange={(event) => handleHomeChange('summary', event.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+      </article>
+    );
+  }
+
+  function renderObservationStep(group) {
+    if (!group) return null;
+
+    return (
+      <article className="panel">
+        <div className="panel-head">
+          <div>
+            <p className="section-label">Observaties</p>
+            <h2>{toDisplay(group.label)}</h2>
+          </div>
+        </div>
+
+        <p className="helper-text">
+          Beoordeel per uitspraak hoe zichtbaar dit gedrag of functioneren op dit
+          moment is.
+        </p>
+
+        <div className="observation-list">
+          {group.items.map((item) => (
+            <article className="observation-card" key={item.id}>
+              <div className="observation-card-head">
+                <p>{toDisplay(item.prompt)}</p>
+                <span className={`chip chip-${item.category}`}>
+                  {item.category === 'core'
+                    ? 'Kernobservatie'
+                    : item.category === 'supporting'
+                      ? 'Ondersteunend'
+                      : 'Contextsignaal'}
+                </span>
+              </div>
+              <div className="option-row">
+                {OBSERVATION_SCORE_OPTIONS.map((option) => (
+                  <label className="option-card" key={option.value}>
+                    <input
+                      type="radio"
+                      name={item.id}
+                      value={option.value}
+                      checked={observationAnswers[item.id] === option.value}
+                      onChange={(event) =>
+                        handleObservationChange(item.id, event.target.value)
+                      }
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </article>
+    );
+  }
+
+  function renderReviewStep() {
+    return (
+      <article className="panel">
+        <div className="panel-head">
+          <div>
+            <p className="section-label">Controle</p>
+            <h2>Controleer de invoer</h2>
+          </div>
+        </div>
+
+        <div className="field-grid">
+          <div className="secondary-card">
+            <strong>Samenvatting</strong>
+            <p>Naam: {student.name || '-'}</p>
+            <p>Groep: {student.group || '-'}</p>
+            <p>Ingevuld door: {student.observer || '-'}</p>
+            <p>{answeredObservationCount} observaties ingevuld</p>
+          </div>
+
+          <label className="field">
+            <span>Aanvullende notities</span>
+            <textarea
+              rows="5"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+            />
+          </label>
+
+          <label className="option-card">
+            <input
+              type="checkbox"
+              checked={isChecklistConfirmed}
+              onChange={(event) => setIsChecklistConfirmed(event.target.checked)}
+            />
+            <span>Ik heb gecontroleerd dat de ingevulde informatie klopt.</span>
+          </label>
+
+          <div className="secondary-card">
+            <strong>Belangrijke kanttekening</strong>
+            <p>
+              Deze tool is een hulpmiddel voor profielduiding en onderwijsafstemming.
+              De uitkomst is een werkhypothese en geen diagnose of classificatie.
+            </p>
+          </div>
+
+          <label className="option-card">
+            <input
+              type="checkbox"
+              checked={isDisclaimerConfirmed}
+              onChange={(event) => setIsDisclaimerConfirmed(event.target.checked)}
+            />
+            <span>
+              Ik begrijp dat deze tool een hulpmiddel is en geen diagnostische tool.
+            </span>
+          </label>
+        </div>
+      </article>
+    );
+  }
+
+  function renderResultsStep() {
+    return (
+      <div className="output-column">
+        <article className="panel result-panel">
+          <div className="panel-head">
+            <div>
+              <p className="section-label">Voorlopig best passend profiel</p>
+              <h2>{formatProfileHeading(bestProfile)}</h2>
+            </div>
+            <button
+              type="button"
+              className="info-button"
+              onClick={() => setIsProfileModalOpen(true)}
+              aria-label="Open profieluitleg"
+            >
+              ?
+            </button>
+          </div>
+          {overlapProfile && (
+            <div className="meta-pills">
+              <span className="pill subtle-pill">
+                Overlap met {toDisplay(overlapProfile.shortTitle)}
+              </span>
+            </div>
+          )}
+        </article>
+
+        <article className="panel">
+          <p className="section-label">Analyse / interpretatie</p>
+          <h3>Werkhypothese</h3>
+          <p>{advice.workHypothesis}</p>
+          <p>{advice.shortInterpretation}</p>
+        </article>
+
+        <article className="panel">
+          <p className="section-label">Score-overzicht per profiel</p>
+          <div className="score-list">
+            {scoreOverview.map((item) => (
+              <div className="score-row" key={item.profileId}>
+                <div>
+                  <strong>{item.shortTitle}</strong>
+                  <span>{item.title}</span>
+                </div>
+                <strong>{item.score}</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="panel">
+          <p className="section-label">Prestatiebeeld</p>
+          <h3>{interpretation.performanceLabel}</h3>
+          <p>{interpretation.performanceSummary}</p>
+        </article>
+
+        <article className="panel">
+          <p className="section-label">Contextsignalen</p>
+          {profileBase.contextSignals.length > 0 ||
+          interpretation.interpretationSignals.length > 0 ? (
+            <ul className="list">
+              {interpretation.interpretationSignals.map((signal) => (
+                <li key={signal.id}>{toDisplay(signal.prompt)}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="helper-text">
+              Nog geen contextsignalen of aanvullende interpretatiesignalen ingevuld.
+            </p>
+          )}
+        </article>
+
+        <article className="panel">
+          <p className="section-label">Discrepantiesignalen uit toetsgegevens</p>
+          {interpretation.discrepancySignals.length > 0 ? (
+            <ul className="list">
+              {interpretation.discrepancySignals.map((signal) => (
+                <li key={signal}>{toDisplay(signal)}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="helper-text">
+              Op basis van de huidige invoer zijn er nog geen expliciete discrepantiesignalen zichtbaar.
+            </p>
+          )}
+        </article>
+
+        <article className="panel">
+          <p className="section-label">Werkhypothese onderwijsbehoeften</p>
+          <div className="advice-list">
+            {advice.prioritizedNeeds.map((item) => (
+              <article className="advice-card" key={item.area}>
+                <span className="area-label">{item.area}</span>
+                <p>
+                  <strong>Onderwijsbehoefte:</strong> {item.need}
+                </p>
+                <p>
+                  <strong>Concreet advies:</strong> {item.advice}
+                </p>
+                <p className="helper-text">{item.reason}</p>
+              </article>
+            ))}
+          </div>
+        </article>
+
+        <article className="panel">
+          <p className="section-label">Vervolgstap / nadere analyse</p>
+          <ul className="list">
+            {advice.followUpSteps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+            {advice.homeAttention && (
+              <li>Thuissituatie als aandachtspunt: {advice.homeAttention}</li>
+            )}
+          </ul>
+        </article>
+
+        <article className="panel caution-panel">
+          <p className="section-label">Belangrijke kanttekening</p>
+          <p>{advice.caution}</p>
+        </article>
+
+        <article className="panel action-panel">
+          <button type="button" className="ghost-button" onClick={handleReset}>
+            Nieuwe invoer starten
+          </button>
+          <button type="button" className="primary-button" onClick={handleExport}>
+            Exporteer werkhypothese
+          </button>
+        </article>
+      </div>
+    );
+  }
+
+  function renderCurrentStep() {
+    if (currentStepConfig.key === 'student') return renderStudentStep();
+    if (currentStepConfig.key === 'tests') return renderTestsStep();
+    if (currentStepConfig.key === 'context') return renderContextStep();
+    if (currentStepConfig.key === 'review') return renderReviewStep();
+    if (currentStepConfig.key === 'results') return renderResultsStep();
+    if (currentStepConfig.domain) return renderObservationStep(currentObservationGroup);
+    return null;
+  }
+
   return (
     <div className="app-shell">
-<header className="hero">
-  <div className="container hero-layout single-hero">
-    <div className="hero-main">
-      <p className="eyebrow">Webtool profielduiding</p>
-      <h1>HB Profiel & Onderwijsbehoefte</h1>
-      <p className="intro">
-        Deze tool ondersteunt leerkrachten bij het vormen van een
-        werkhypothese over profielrichting, overlap, prestatiebeeld en
-        onderwijsbehoeften. De ruwe profielscore komt alleen voort uit
-        observeerbaar functioneren in de schoolcontext.
-      </p>
-      <div className="meta-pills">
-  <span className="pill">
-    {answeredObservationCount} observaties ingevuld
-  </span>
-</div>
-    </div>
-  </div>
-</header>
+      <header className="hero">
+        <div className="container hero-layout single-hero">
+          <div className="hero-main">
+            <p className="eyebrow">Webtool profielduiding</p>
+            <h1>HB Profiel & Onderwijsbehoefte</h1>
+            <p className="intro">
+              Deze tool ondersteunt leerkrachten stap voor stap bij het vormen van een
+              werkhypothese over profielrichting, overlap, prestatiebeeld en
+              onderwijsbehoeften.
+            </p>
+            <div className="meta-pills">
+              <span className="pill">
+                {answeredObservationCount} observaties ingevuld
+              </span>
+              <span className="pill">
+                Stap {currentStep + 1} van {steps.length}
+              </span>
+            </div>
+          </div>
+        </div>
+      </header>
 
       <main className="container app-layout">
         <section className="input-column">
-          <article className="panel">
-            <div className="panel-head">
-              <div>
-                <p className="section-label">Leerlinggegevens</p>
-                <h2>Basisgegevens</h2>
-              </div>
-            </div>
-            <div className="field-grid two-columns">
-              <label className="field">
-                <span>Naam leerling</span>
-                <input
-                  type="text"
-                  value={student.name}
-                  onChange={(event) =>
-                    handleStudentChange('name', event.target.value)
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Groep</span>
-                <input
-                  type="text"
-                  value={student.group}
-                  onChange={(event) =>
-                    handleStudentChange('group', event.target.value)
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Ingevuld door</span>
-                <input
-                  type="text"
-                  value={student.observer}
-                  onChange={(event) =>
-                    handleStudentChange('observer', event.target.value)
-                  }
-                />
-              </label>
-              <label className="field">
-                <span>Datum</span>
-                <input
-                  type="date"
-                  value={student.date}
-                  onChange={(event) =>
-                    handleStudentChange('date', event.target.value)
-                  }
-                />
-              </label>
-            </div>
-          </article>
-
-          <article className="panel">
-            <p className="section-label">ZOOV+ startsignaal</p>
-            <h2>Startsituatie</h2>
-            <div className="field-grid">
-              <label className="field">
-                <span>ZOOV+</span>
-                <select
-                  value={zoovSignal.status}
-                  onChange={(event) =>
-                    handleZoovChange('status', event.target.value)
-                  }
+          <div className="progress-strip">
+            {steps.map((step, index) => {
+              const isActive = index === currentStep;
+              const isDone = index < currentStep;
+              return (
+                <div
+                  key={step.key}
+                  className={`progress-step ${isActive ? 'is-active' : ''} ${
+                    isDone ? 'is-done' : ''
+                  }`}
                 >
-                  {ZOOV_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Korte notitie</span>
-                <textarea
-                  rows="3"
-                  value={zoovSignal.note}
-                  onChange={(event) =>
-                    handleZoovChange('note', event.target.value)
-                  }
-                />
-              </label>
-            </div>
-          </article>
-
-          <article className="panel">
-            <p className="section-label">Context</p>
-            <h2>Rijke interpretatielaag</h2>
-            <div className="field-grid">
-              <label className="field">
-                <span>Reactie op uitdaging</span>
-                <select
-                  value={contextInput.challengeResponse}
-                  onChange={(event) =>
-                    handleContextChange('challengeResponse', event.target.value)
-                  }
-                >
-                  {CHALLENGE_RESPONSE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Verschillen tussen settings</span>
-                <select
-                  value={contextInput.settingDifference}
-                  onChange={(event) =>
-                    handleContextChange('settingDifference', event.target.value)
-                  }
-                >
-                  {SETTING_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Mondeling en schriftelijk functioneren</span>
-                <select
-                  value={contextInput.expressionDifference}
-                  onChange={(event) =>
-                    handleContextChange('expressionDifference', event.target.value)
-                  }
-                >
-                  {EXPRESSION_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Aanvullende schoolcontext</span>
-                <textarea
-                  rows="3"
-                  value={contextInput.note}
-                  onChange={(event) =>
-                    handleContextChange('note', event.target.value)
-                  }
-                />
-              </label>
-            </div>
-          </article>
-
-          <article className="panel">
-            <p className="section-label">Thuissituatie</p>
-            <h2>Context voor verdere duiding</h2>
-            <div className="field-grid">
-              <label className="field">
-                <span>Verhouding tot schoolbeeld</span>
-                <select
-                  value={homeInput.pattern}
-                  onChange={(event) =>
-                    handleHomeChange('pattern', event.target.value)
-                  }
-                >
-                  {HOME_PATTERN_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>Korte samenvatting thuissituatie</span>
-                <textarea
-                  rows="3"
-                  value={homeInput.summary}
-                  onChange={(event) =>
-                    handleHomeChange('summary', event.target.value)
-                  }
-                />
-              </label>
-            </div>
-          </article>
-
-          <article className="panel">
-            <p className="section-label">Toetsgegevens</p>
-            <h2>Prestatiebeeld en discrepantie</h2>
-            <div className="field-grid two-columns">
-              {Object.entries(TEST_FIELD_LABELS).map(([key, label]) => (
-                <label className="field" key={key}>
-                  <span>{label}</span>
-                  <select
-                    value={testScores[key]}
-                    onChange={(event) =>
-                      handleTestChange(key, event.target.value)
-                    }
-                  >
-                    {TEST_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ))}
-            </div>
-          </article>
-
-          <article className="panel">
-            <p className="section-label">Observatieblokken</p>
-            <h2>Stabiele profielbasis</h2>
-            <p className="helper-text">
-              Alleen deze observaties tellen mee in de ruwe profielscore.
-              Contextsignalen uit het laatste blok worden wel opgeslagen, maar
-              niet meegeteld in de profielsom.
-            </p>
-
-            <div className="observation-groups">
-              {observationGroups.map((group) => (
-                <section className="observation-group" key={group.domain}>
-                  <div className="observation-group-head">
-                    <h3>{toDisplay(group.label)}</h3>
-                    <span className="group-note">
-                      {group.items[0].category === 'context'
-                        ? 'Contextsignalen'
-                        : 'Scorebepalende observaties'}
-                    </span>
+                  <span>{index + 1}</span>
+                  <div>
+                    <strong>{step.shortTitle}</strong>
+                    <small>{step.title}</small>
                   </div>
+                </div>
+              );
+            })}
+          </div>
 
-                  <div className="observation-list">
-                    {group.items.map((item) => (
-                      <article className="observation-card" key={item.id}>
-                        <div className="observation-card-head">
-                          <p>{toDisplay(item.prompt)}</p>
-                          <span className={`chip chip-${item.category}`}>
-                            {item.category === 'core'
-                              ? 'Kernobservatie'
-                              : item.category === 'supporting'
-                                ? 'Ondersteunend'
-                                : 'Contextsignaal'}
-                          </span>
-                        </div>
-                        <div className="option-row">
-                          {OBSERVATION_SCORE_OPTIONS.map((option) => (
-                            <label className="option-card" key={option.value}>
-                              <input
-                                type="radio"
-                                name={item.id}
-                                value={option.value}
-                                checked={observationAnswers[item.id] === option.value}
-                                onChange={(event) =>
-                                  handleObservationChange(
-                                    item.id,
-                                    event.target.value
-                                  )
-                                }
-                              />
-                              <span>{option.label}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          </article>
+          {renderCurrentStep()}
 
-          <article className="panel">
-            <p className="section-label">Notities</p>
-            <h2>Vrije observatienotities</h2>
-            <label className="field">
-              <span>Aanvullende notities</span>
-              <textarea
-                rows="5"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-              />
-            </label>
-          </article>
-
-          <article className="panel action-panel">
-            <button type="button" className="ghost-button" onClick={handleReset}>
-              Reset alles
-            </button>
-            <button
-              type="button"
-              className="primary-button"
-              onClick={handleExport}
-            >
-              Exporteer werkhypothese
-            </button>
-          </article>
-        </section>
-
-        <aside className="output-column">
-          <article className="panel result-panel">
-            <div className="panel-head">
-              <div>
-                <p className="section-label">Voorlopig best passend profiel</p>
-                <h2>{formatProfileHeading(bestProfile)}</h2>
-              </div>
+          {currentStep < resultStepIndex && (
+            <article className="panel action-panel">
               <button
                 type="button"
-                className="info-button"
-                onClick={() => setIsProfileModalOpen(true)}
-                aria-label="Open profieluitleg"
+                className="ghost-button"
+                onClick={handlePrevious}
+                disabled={!canGoBack}
               >
-                ?
+                Vorige
               </button>
-            </div>
-            {overlapProfile && (
-  <div className="meta-pills">
-    <span className="pill subtle-pill">
-      Overlap met {toDisplay(overlapProfile.shortTitle)}
-    </span>
-  </div>
-)}
-          </article>
 
-          <article className="panel">
-            <p className="section-label">Analyse / interpretatie</p>
-            <h3>Werkhypothese</h3>
-            <p>{advice.workHypothesis}</p>
-            <p>{advice.shortInterpretation}</p>
-          </article>
+              <div className="wizard-status">
+                {currentStepConfig.key !== 'review' && currentStepConfig.key !== 'results' && (
+                  <span className="helper-text">
+                    {canGoNext
+                      ? 'Je kunt doorgaan naar de volgende stap.'
+                      : 'Vul eerst de benodigde informatie in om verder te gaan.'}
+                  </span>
+                )}
+              </div>
 
-          <article className="panel">
-            <p className="section-label">Score-overzicht per profiel</p>
-            <div className="score-list">
-              {scoreOverview.map((item) => (
-                <div className="score-row" key={item.profileId}>
-                  <div>
-                    <strong>{item.shortTitle}</strong>
-                    <span>{item.title}</span>
-                  </div>
-                  <strong>{item.score}</strong>
-                </div>
-              ))}
-            </div>
-          </article>
-
-          <article className="panel">
-            <p className="section-label">Prestatiebeeld</p>
-            <h3>{interpretation.performanceLabel}</h3>
-            <p>{interpretation.performanceSummary}</p>
-          </article>
-
-          <article className="panel">
-            <p className="section-label">Contextsignalen</p>
-            {profileBase.contextSignals.length > 0 ||
-            interpretation.interpretationSignals.length > 0 ? (
-              <ul className="list">
-                {interpretation.interpretationSignals.map((signal) => (
-                  <li key={signal.id}>{toDisplay(signal.prompt)}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="helper-text">
-                Nog geen contextsignalen of aanvullende interpretatiesignalen
-                ingevuld.
-              </p>
-            )}
-          </article>
-
-          <article className="panel">
-            <p className="section-label">Discrepantiesignalen uit toetsgegevens</p>
-            {interpretation.discrepancySignals.length > 0 ? (
-              <ul className="list">
-                {interpretation.discrepancySignals.map((signal) => (
-                  <li key={signal}>{toDisplay(signal)}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="helper-text">
-                Op basis van de huidige invoer zijn er nog geen expliciete
-                discrepantiesignalen zichtbaar.
-              </p>
-            )}
-          </article>
-
-          <article className="panel">
-            <p className="section-label">Werkhypothese onderwijsbehoeften</p>
-            <div className="advice-list">
-              {advice.prioritizedNeeds.map((item) => (
-                <article className="advice-card" key={item.area}>
-                  <span className="area-label">{item.area}</span>
-                  <p>
-                    <strong>Onderwijsbehoefte:</strong> {item.need}
-                  </p>
-                  <p>
-                    <strong>Concreet advies:</strong> {item.advice}
-                  </p>
-                  <p className="helper-text">{item.reason}</p>
-                </article>
-              ))}
-            </div>
-          </article>
-
-          <article className="panel">
-            <p className="section-label">Vervolgstap / nadere analyse</p>
-            <ul className="list">
-              {advice.followUpSteps.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-              {advice.homeAttention && (
-                <li>
-                  Thuissituatie als aandachtspunt: {advice.homeAttention}
-                </li>
-              )}
-            </ul>
-          </article>
-
-          <article className="panel caution-panel">
-            <p className="section-label">Belangrijke kanttekening</p>
-            <p>{advice.caution}</p>
-          </article>
-        </aside>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleNext}
+                disabled={!canGoNext}
+              >
+                {currentStep === reviewStepIndex ? 'Toon uitkomst' : 'Volgende'}
+              </button>
+            </article>
+          )}
+        </section>
       </main>
 
       {isProfileModalOpen && (
@@ -909,9 +1121,8 @@ function App() {
               <div className="modal-section">
                 <strong>Contextnoot</strong>
                 <p>
-                  Thuissituatie, toetsgegevens en verschillen tussen settings
-                  kunnen dit profielbeeld versterken of nuanceren, maar tellen
-                  niet mee in de ruwe profielscore.
+                  Thuissituatie, toetsgegevens en verschillen tussen settings kunnen dit
+                  profielbeeld versterken of nuanceren, maar tellen niet mee in de ruwe profielscore.
                 </p>
               </div>
             </div>
