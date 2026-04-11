@@ -53,20 +53,37 @@ const AREA_BOOSTS = {
   selfDirection: ['Leerstof en opdrachten', 'Leeractiviteiten', 'Leerkracht']
 };
 
-const CONTEXT_SIGNAL_AREA_BOOSTS = {
-  'ctx-small-group-stronger': ['Leeromgeving', 'Groepsgenoten', 'Feedback'],
-  'ctx-opens-up-with-choice': [
-    'Leeractiviteiten',
-    'Leerstof en opdrachten',
-    'Instructie'
-  ],
-  'ctx-peer-match-helps': ['Groepsgenoten', 'Leeromgeving'],
-  'ctx-drops-with-repetition': [
-    'Leerstof en opdrachten',
-    'Leeractiviteiten',
-    'Instructie'
-  ],
-  'ctx-oral-written-gap': ['Instructie', 'Leeractiviteiten', 'Feedback']
+/*
+  Gewogen contextkoppeling:
+  - primary = gebied dat het meest direct geraakt wordt
+  - secondary = logisch volgend gebied
+  - tertiary = ondersteunend gebied
+*/
+const CONTEXT_SIGNAL_AREA_WEIGHTS = {
+  'ctx-small-group-stronger': {
+    Leeromgeving: 3,
+    Groepsgenoten: 2,
+    Feedback: 1
+  },
+  'ctx-opens-up-with-choice': {
+    Leeractiviteiten: 3,
+    'Leerstof en opdrachten': 2,
+    Instructie: 1
+  },
+  'ctx-peer-match-helps': {
+    Groepsgenoten: 3,
+    Leeromgeving: 2
+  },
+  'ctx-drops-with-repetition': {
+    'Leerstof en opdrachten': 3,
+    Leeractiviteiten: 2,
+    Instructie: 1
+  },
+  'ctx-oral-written-gap': {
+    Instructie: 3,
+    Leeractiviteiten: 2,
+    Feedback: 2
+  }
 };
 
 const CONTEXT_SIGNAL_REASON_TEXT = {
@@ -118,18 +135,82 @@ function summarizeObservations(observations) {
     .join('; ');
 }
 
-function getContextBoostAmount(strength) {
-  if (strength === 3) return 3;
-  if (strength === 2) return 2;
-  return 1;
+function getContextStrengthMultiplier(strength) {
+  if (strength === 3) return 1;
+  if (strength === 2) return 0.75;
+  return 0.5;
+}
+
+function applyWeightedContextBoost(areaScores, signal) {
+  const areaWeights = CONTEXT_SIGNAL_AREA_WEIGHTS[signal.id];
+  if (!areaWeights) return;
+
+  const multiplier = getContextStrengthMultiplier(signal.strength);
+
+  Object.entries(areaWeights).forEach(([area, weight]) => {
+    if (area in areaScores) {
+      areaScores[area] += Math.round(weight * 3 * multiplier);
+    }
+  });
+}
+
+function getPrimaryContextArea(signalId) {
+  const weights = CONTEXT_SIGNAL_AREA_WEIGHTS[signalId];
+  if (!weights) return null;
+
+  return Object.entries(weights).sort((left, right) => right[1] - left[1])[0][0];
 }
 
 function findRelevantContextSignalForArea(contextSignals, area) {
-  return (
-    contextSignals.find((signal) =>
-      (CONTEXT_SIGNAL_AREA_BOOSTS[signal.id] || []).includes(area)
-    ) || null
+  const matchingSignals = contextSignals.filter((signal) =>
+    Object.prototype.hasOwnProperty.call(
+      CONTEXT_SIGNAL_AREA_WEIGHTS[signal.id] || {},
+      area
+    )
   );
+
+  if (matchingSignals.length === 0) return null;
+
+  return matchingSignals.sort((left, right) => {
+    const leftWeight =
+      (CONTEXT_SIGNAL_AREA_WEIGHTS[left.id] || {})[area] || 0;
+    const rightWeight =
+      (CONTEXT_SIGNAL_AREA_WEIGHTS[right.id] || {})[area] || 0;
+
+    if (rightWeight !== leftWeight) return rightWeight - leftWeight;
+    return right.strength - left.strength;
+  })[0];
+}
+
+function buildPrioritizedAreaNames(areaScores, activeContextSignals) {
+  const sortedAreas = Object.entries(areaScores)
+    .filter(([area]) => area !== 'Thuissituatie / ouders')
+    .sort((left, right) => right[1] - left[1])
+    .map(([area]) => area);
+
+  const prioritized = sortedAreas.slice(0, 4);
+
+  const forcedPrimaryAreas = unique(
+    activeContextSignals
+      .filter((signal) => signal.strength >= 2)
+      .map((signal) => getPrimaryContextArea(signal.id))
+      .filter(Boolean)
+  );
+
+  forcedPrimaryAreas.forEach((forcedArea) => {
+    if (prioritized.includes(forcedArea)) return;
+
+    const replaceIndex = prioritized
+      .map((area, index) => ({ area, index, score: areaScores[area] }))
+      .sort((left, right) => left.score - right.score)
+      .find((item) => !forcedPrimaryAreas.includes(item.area))?.index;
+
+    if (replaceIndex !== undefined) {
+      prioritized[replaceIndex] = forcedArea;
+    }
+  });
+
+  return unique(prioritized).slice(0, 4);
 }
 
 export default function buildPersonalizedAdvice({
@@ -149,7 +230,7 @@ export default function buildPersonalizedAdvice({
   const areaScores = createAreaScoreMap();
 
   const activeContextSignals = profileBase.contextSignals.filter(
-    (signal) => signal.id in CONTEXT_SIGNAL_AREA_BOOSTS
+    (signal) => signal.id in CONTEXT_SIGNAL_AREA_WEIGHTS
   );
 
   PROFILE_PRIORITY_AREAS[topProfile.id].forEach((area, index) => {
@@ -195,10 +276,7 @@ export default function buildPersonalizedAdvice({
   }
 
   activeContextSignals.forEach((signal) => {
-    const boostedAreas = CONTEXT_SIGNAL_AREA_BOOSTS[signal.id];
-    if (boostedAreas) {
-      boostAreas(areaScores, boostedAreas, getContextBoostAmount(signal.strength));
-    }
+    applyWeightedContextBoost(areaScores, signal);
   });
 
   if (contextInput.settingDifference !== 'unknown') {
@@ -210,12 +288,9 @@ export default function buildPersonalizedAdvice({
     areaScores.Leerkracht += 1;
   }
 
-  const prioritizedAreaNames = unique(
-    Object.entries(areaScores)
-      .filter(([area]) => area !== 'Thuissituatie / ouders')
-      .sort((left, right) => right[1] - left[1])
-      .slice(0, 4)
-      .map(([area]) => area)
+  const prioritizedAreaNames = buildPrioritizedAreaNames(
+    areaScores,
+    activeContextSignals
   );
 
   const prioritizedNeeds = prioritizedAreaNames.map((area) => {
@@ -312,7 +387,9 @@ export default function buildPersonalizedAdvice({
   ];
 
   if (interpretation.interpretationSummary) {
-    shortInterpretationParts.push(normalizeText(interpretation.interpretationSummary));
+    shortInterpretationParts.push(
+      normalizeText(interpretation.interpretationSummary)
+    );
   }
 
   if (interpretation.discrepancySignals.length > 0) {
