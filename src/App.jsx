@@ -229,7 +229,7 @@ function buildExportText({
     'Profieluitkomst',
     `Voorlopig best passend profiel: ${formatProfileHeading(bestProfile)}`,
     `Profieloverlap: ${overlapProfile ? formatProfileHeading(overlapProfile) : '-'}`,
-    `Profielduidelijkheid: ${profileBase.profileDirectionLabel}`,
+
     '',
     'Score-overzicht per profiel',
     ...scoreOverview.map(
@@ -435,12 +435,11 @@ function App() {
         onderwijsbehoeften. De ruwe profielscore komt alleen voort uit
         observeerbaar functioneren in de schoolcontext.
       </p>
-      <div className="meta-pills">
-        <span className="pill">
-          {answeredObservationCount} observaties ingevuld
-        </span>
-        <span className="pill">{profileBase.profileDirectionLabel}</span>
-      </div>
+      <<div className="meta-pills">
+  <span className="pill">
+    {answeredObservationCount} observaties ingevuld
+  </span>
+</div>
     </div>
   </div>
 </header>
@@ -752,15 +751,13 @@ function App() {
                 ?
               </button>
             </div>
-            <p className="lead-text">{toDisplay(bestProfile.interpretation)}</p>
-            <div className="meta-pills">
-              <span className="pill">{profileBase.profileDirectionLabel}</span>
-              {overlapProfile && (
-                <span className="pill subtle-pill">
-                  Overlap met {toDisplay(overlapProfile.shortTitle)}
-                </span>
-              )}
-            </div>
+            <{overlapProfile && (
+  <div className="meta-pills">
+    <span className="pill subtle-pill">
+      Overlap met {toDisplay(overlapProfile.shortTitle)}
+    </span>
+  </div>
+)}
           </article>
 
           <article className="panel">
@@ -877,8 +874,7 @@ function App() {
                 <p className="section-label">Profieluitleg</p>
                 <h2>{formatProfileHeading(bestProfile)}</h2>
                 <p className="helper-text">
-                  Dit is een profielbeschrijving en interpretatiekader op basis
-                  van Matrix 1. Het is geen diagnose.
+                  Dit is een profielbeschrijving en interpretatiekader. Het is geen diagnose.
                 </p>
               </div>
               <button
