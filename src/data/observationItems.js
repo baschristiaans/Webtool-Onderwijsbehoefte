@@ -139,6 +139,15 @@ const observationItems = [
     profileIds: ['type3']
   },
   {
+    id: 'obs-avoids-visible-growth-opportunity',
+    domain: 'sociale-zichtbaarheid',
+    domainLabel: 'Sociale zichtbaarheid en afstemming',
+    category: 'supporting',
+    prompt:
+      'De leerling kiest zelden uit zichzelf voor een verdiepings- of verrijkingskans wanneer die hem of haar zichtbaar apart zet van de groep.',
+    profileIds: ['type3']
+  },
+  {
     id: 'obs-disengages',
     domain: 'betrokkenheid',
     domainLabel: 'Betrokkenheid en schoolverbinding',
