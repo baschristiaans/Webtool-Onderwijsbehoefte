@@ -107,7 +107,8 @@ const observationItems = [
     domain: 'sociale-zichtbaarheid',
     domainLabel: 'Sociale zichtbaarheid en afstemming',
     category: 'core',
-    prompt: 'De leerling houdt sterke antwoorden of inzichten geregeld op de achtergrond.',
+    prompt:
+      'De leerling houdt sterke antwoorden of inzichten geregeld op de achtergrond.',
     profileIds: ['type3']
   },
   {
@@ -237,7 +238,17 @@ const observationItems = [
     domain: 'zelfsturing',
     domainLabel: 'Zelfsturing en ambitie',
     category: 'supporting',
-    prompt: 'De leerling stelt zelf doelen of bewaakt zichtbaar de eigen voortgang.',
+    prompt:
+      'De leerling stelt zelf doelen of bewaakt zichtbaar de eigen voortgang.',
+    profileIds: ['type6']
+  },
+  {
+    id: 'obs-independent-start-without-confirmation',
+    domain: 'zelfsturing',
+    domainLabel: 'Zelfsturing en ambitie',
+    category: 'supporting',
+    prompt:
+      'De leerling gaat zelfstandig aan het werk zonder eerst bevestiging te zoeken.',
     profileIds: ['type6']
   },
   {
