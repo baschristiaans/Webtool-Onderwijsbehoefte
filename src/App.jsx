@@ -227,10 +227,9 @@ function buildExportText({
     ),
     '',
     'Profieluitkomst',
-    `Voorlopig best passend profiel: ${formatProfileHeading(bestProfile)}`,
-    `Profieloverlap: ${overlapProfile ? formatProfileHeading(overlapProfile) : '-'}`,
-
-    '',
+`Voorlopig best passend profiel: ${formatProfileHeading(bestProfile)}`,
+`Profieloverlap: ${overlapProfile ? formatProfileHeading(overlapProfile) : '-'}`,
+'',
     'Score-overzicht per profiel',
     ...scoreOverview.map(
       (item) => `${item.shortTitle} - ${item.title}: ${item.score}`
@@ -435,7 +434,7 @@ function App() {
         onderwijsbehoeften. De ruwe profielscore komt alleen voort uit
         observeerbaar functioneren in de schoolcontext.
       </p>
-      <<div className="meta-pills">
+      <div className="meta-pills">
   <span className="pill">
     {answeredObservationCount} observaties ingevuld
   </span>
@@ -751,7 +750,7 @@ function App() {
                 ?
               </button>
             </div>
-            <{overlapProfile && (
+            {overlapProfile && (
   <div className="meta-pills">
     <span className="pill subtle-pill">
       Overlap met {toDisplay(overlapProfile.shortTitle)}
