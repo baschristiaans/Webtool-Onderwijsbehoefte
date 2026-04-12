@@ -265,14 +265,16 @@ function buildExportText({
     '',
     'Geprioriteerde onderwijsbehoeften',
     ...advice.prioritizedNeeds.flatMap((item) => [
-      `${item.area}`,
+      `${item.area}${item.sharedByOverlap ? ' (extra relevant bij overlap)' : ''}`,
       `Onderwijsbehoefte: ${item.need}`,
-      `Advies: ${item.advice}`,
-      `Waarom nu: ${item.reason}`
+      `Advies: ${item.advice}`
     ]),
     '',
     'Concrete leerkrachtadviezen',
-    ...advice.teacherActions.map((item) => `${item.area}: ${item.action}`),
+    ...advice.teacherActions.map(
+      (item) =>
+        `${item.area}${item.sharedByOverlap ? ' (extra relevant bij overlap)' : ''}: ${item.action}`
+    ),
     '',
     'Vervolgstappen',
     ...advice.followUpSteps,
@@ -951,7 +953,9 @@ function App() {
                 <p>
                   <strong>Concreet advies:</strong> {item.advice}
                 </p>
-                <p className="helper-text">{item.reason}</p>
+                {item.sharedByOverlap && (
+                  <span className="pill subtle-pill">Extra relevant bij overlap</span>
+                )}
               </article>
             ))}
           </div>
