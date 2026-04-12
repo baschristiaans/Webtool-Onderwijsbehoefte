@@ -22,7 +22,7 @@ const TEST_OPTIONS = [
 
 const ZOOV_OPTIONS = [
   { value: 'unknown', label: 'Niet ingevuld' },
-  { value: 'yes', label: 'Ja, ZOOV+ geeft een startsignaal' },
+  { value: 'yes', label: 'Ja, ZOOV+ gaf aanleiding tot nadere observatie' },
   { value: 'no', label: 'Nee, geen ZOOV+ startsignaal' }
 ];
 
@@ -199,7 +199,7 @@ function buildExportText({
     : null;
 
   const lines = [
-    'Webtool profielduiding hoogbegaafdheid',
+    'Webtool profiel en onderwijsbehoefte',
     '',
     'Leerlinggegevens',
     `Naam: ${student.name || '-'}`,
@@ -207,8 +207,8 @@ function buildExportText({
     `Ingevuld door: ${student.observer || '-'}`,
     `Datum: ${student.date || '-'}`,
     '',
-    'ZOOV+ startsignaal',
-    `Status: ${TEST_EXPORT_LABELS[zoovSignal.status] || zoovSignal.status}`,
+    'Aanleiding',
+    `ZOOV+: ${TEST_EXPORT_LABELS[zoovSignal.status] || zoovSignal.status}`,
     `Notitie: ${zoovSignal.note || '-'}`,
     '',
     'Context',
@@ -227,9 +227,9 @@ function buildExportText({
         `${TEST_FIELD_LABELS[key]}: ${TEST_EXPORT_LABELS[value] || value}`
     ),
     '',
-    'Profieluitkomst',
-    `Voorlopig best passend profiel: ${formatProfileHeading(bestProfile)}`,
-    `Profieloverlap: ${overlapProfile ? formatProfileHeading(overlapProfile) : '-'}`,
+    'Profielbeeld',
+    `Best passend profiel: ${formatProfileHeading(bestProfile)}`,
+    `Overlap: ${overlapProfile ? formatProfileHeading(overlapProfile) : '-'}`,
     '',
     'Score-overzicht per profiel',
     ...scoreOverview.map(
@@ -239,7 +239,7 @@ function buildExportText({
     'Prestatiebeeld',
     interpretation.performanceSummary,
     '',
-    'Discrepantiebeeld',
+    'Discrepantiesignalen',
     ...(interpretation.discrepancySignals.length > 0
       ? interpretation.discrepancySignals
       : ['Geen expliciete discrepantiesignalen op basis van de huidige invoer.']),
@@ -259,7 +259,7 @@ function buildExportText({
         )
       : ['Nog geen observaties die de profielrichting dragen.']),
     '',
-    'Werkhypothese onderwijsbehoeften',
+    'Werkhypothese',
     advice.workHypothesis,
     advice.shortInterpretation,
     '',
@@ -270,13 +270,7 @@ function buildExportText({
       `Advies: ${item.advice}`
     ]),
     '',
-    'Concrete leerkrachtadviezen',
-    ...advice.teacherActions.map(
-      (item) =>
-        `${item.area}${item.sharedByOverlap ? ' (extra relevant bij overlap)' : ''}: ${item.action}`
-    ),
-    '',
-    'Vervolgstappen',
+    'Vervolg',
     ...advice.followUpSteps,
     '',
     'Notities',
@@ -359,12 +353,12 @@ function App() {
     const baseSteps = [
       {
         key: 'student',
-        title: 'Leerlinggegevens en startsituatie',
+        title: 'Leerlinggegevens en aanleiding',
         shortTitle: 'Stap 1'
       },
       {
         key: 'tests',
-        title: 'Toetsscores IEP / CITO',
+        title: 'Toetsgegevens',
         shortTitle: 'Stap 2'
       },
       {
@@ -386,7 +380,7 @@ function App() {
       ...observationSteps,
       {
         key: 'review',
-        title: 'Controle en kanttekening',
+        title: 'Controle en disclaimer',
         shortTitle: 'Controle'
       },
       {
@@ -537,7 +531,7 @@ function App() {
         <div className="panel-head">
           <div>
             <p className="section-label">Stap 1</p>
-            <h2>Leerlinggegevens en startsituatie</h2>
+            <h2>Leerlinggegevens en aanleiding</h2>
           </div>
         </div>
 
@@ -577,7 +571,7 @@ function App() {
         </div>
 
         <div className="secondary-block">
-          <p className="section-label">Startsituatie</p>
+          <p className="section-label">Aanleiding</p>
           <div className="field-grid">
             <label className="field">
               <span>ZOOV+</span>
@@ -612,12 +606,12 @@ function App() {
         <div className="panel-head">
           <div>
             <p className="section-label">Stap 2</p>
-            <h2>Toetsscores IEP / CITO</h2>
+            <h2>Toetsgegevens</h2>
           </div>
         </div>
         <p className="helper-text">
           Vul hier het prestatiebeeld in. Deze gegevens tellen niet mee in de ruwe
-          profielscore, maar worden later gebruikt voor prestatiebeeld en
+          profielscore, maar worden wel gebruikt voor het prestatiebeeld en eventuele
           discrepantiesignalen.
         </p>
         <div className="field-grid two-columns">
@@ -801,7 +795,7 @@ function App() {
         <div className="panel-head">
           <div>
             <p className="section-label">Controle</p>
-            <h2>Controleer de invoer</h2>
+            <h2>Controle en disclaimer</h2>
           </div>
         </div>
 
@@ -835,7 +829,7 @@ function App() {
           <div className="secondary-card">
             <strong>Belangrijke kanttekening</strong>
             <p>
-              Deze tool is een hulpmiddel voor profielduiding en onderwijsafstemming.
+              Deze tool ondersteunt bij profielduiding en onderwijsafstemming.
               De uitkomst is een werkhypothese en geen diagnose of classificatie.
             </p>
           </div>
@@ -861,7 +855,7 @@ function App() {
         <article className="panel result-panel">
           <div className="panel-head">
             <div>
-              <p className="section-label">Voorlopig best passend profiel</p>
+              <p className="section-label">Profielbeeld</p>
               <h2>{formatProfileHeading(bestProfile)}</h2>
             </div>
             <button
@@ -883,14 +877,14 @@ function App() {
         </article>
 
         <article className="panel">
-          <p className="section-label">Analyse / interpretatie</p>
+          <p className="section-label">Samenvatting</p>
           <h3>Werkhypothese</h3>
           <p>{advice.workHypothesis}</p>
           <p>{advice.shortInterpretation}</p>
         </article>
 
         <article className="panel">
-          <p className="section-label">Score-overzicht per profiel</p>
+          <p className="section-label">Score-overzicht</p>
           <div className="score-list">
             {scoreOverview.map((item) => (
               <div className="score-row" key={item.profileId}>
@@ -911,7 +905,7 @@ function App() {
         </article>
 
         <article className="panel">
-          <p className="section-label">Contextsignalen</p>
+          <p className="section-label">Aanvullende signalen</p>
           {profileBase.contextSignals.length > 0 ||
           interpretation.interpretationSignals.length > 0 ? (
             <ul className="list">
@@ -921,13 +915,13 @@ function App() {
             </ul>
           ) : (
             <p className="helper-text">
-              Nog geen contextsignalen of aanvullende interpretatiesignalen ingevuld.
+              Nog geen aanvullende signalen ingevuld.
             </p>
           )}
         </article>
 
         <article className="panel">
-          <p className="section-label">Discrepantiesignalen uit toetsgegevens</p>
+          <p className="section-label">Discrepantiesignalen</p>
           {interpretation.discrepancySignals.length > 0 ? (
             <ul className="list">
               {interpretation.discrepancySignals.map((signal) => (
@@ -942,7 +936,7 @@ function App() {
         </article>
 
         <article className="panel">
-          <p className="section-label">Werkhypothese onderwijsbehoeften</p>
+          <p className="section-label">Onderwijsbehoeften en adviezen</p>
           <div className="advice-list">
             {advice.prioritizedNeeds.map((item) => (
               <article className="advice-card" key={item.area}>
@@ -951,7 +945,7 @@ function App() {
                   <strong>Onderwijsbehoefte:</strong> {item.need}
                 </p>
                 <p>
-                  <strong>Concreet advies:</strong> {item.advice}
+                  <strong>Advies:</strong> {item.advice}
                 </p>
                 {item.sharedByOverlap && (
                   <span className="pill subtle-pill">Extra relevant bij overlap</span>
@@ -962,7 +956,7 @@ function App() {
         </article>
 
         <article className="panel">
-          <p className="section-label">Vervolgstap / nadere analyse</p>
+          <p className="section-label">Vervolg</p>
           <ul className="list">
             {advice.followUpSteps.map((step) => (
               <li key={step}>{step}</li>
@@ -974,7 +968,7 @@ function App() {
         </article>
 
         <article className="panel caution-panel">
-          <p className="section-label">Belangrijke kanttekening</p>
+          <p className="section-label">Kanttekening</p>
           <p>{advice.caution}</p>
         </article>
 
@@ -1005,11 +999,11 @@ function App() {
       <header className="hero">
         <div className="container hero-layout single-hero">
           <div className="hero-main">
-            <p className="eyebrow">Webtool profielduiding</p>
+            <p className="eyebrow">Webtool profiel en onderwijsbehoefte</p>
             <h1>HB Profiel & Onderwijsbehoefte</h1>
             <p className="intro">
               Deze tool ondersteunt leerkrachten stap voor stap bij het vormen van een
-              werkhypothese over profielrichting, overlap, prestatiebeeld en
+              werkhypothese over profiel, overlap, prestatiebeeld en passende
               onderwijsbehoeften.
             </p>
             <div className="meta-pills">
@@ -1097,7 +1091,7 @@ function App() {
                 <p className="section-label">Profieluitleg</p>
                 <h2>{formatProfileHeading(bestProfile)}</h2>
                 <p className="helper-text">
-                  Dit is een profielbeschrijving en interpretatiekader. Het is geen diagnose.
+                  Dit profiel helpt bij het begrijpen van het zichtbare functioneren in school. Het is geen diagnose.
                 </p>
               </div>
               <button
@@ -1123,7 +1117,7 @@ function App() {
                 <p>{toDisplay(bestProfile.matrix1.behoeften)}</p>
               </div>
               <div className="modal-section">
-                <strong>Signalen in de schoolcontext</strong>
+                <strong>Signalen in school</strong>
                 <p>{toDisplay(bestProfile.matrix1.signalen)}</p>
               </div>
               <div className="modal-section">
