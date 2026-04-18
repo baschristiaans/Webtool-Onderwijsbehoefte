@@ -709,8 +709,7 @@ function App() {
       setCurrentStep((value) => value - 1);
     }
   };
-
-  function renderStudentStep() {
+    function renderStudentStep() {
     return (
       <article className="panel">
         <div className="panel-head">
@@ -1076,8 +1075,7 @@ function App() {
       </article>
     );
   }
-
-  function renderResultsStep() {
+    function renderResultsStep() {
     return (
       <div className="output-column">
         <article className="panel result-panel">
