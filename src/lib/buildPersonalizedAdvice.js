@@ -149,7 +149,7 @@ function applyWeightedContextBoost(areaScores, signal) {
 
   Object.entries(areaWeights).forEach(([area, weight]) => {
     if (area in areaScores) {
-      areaScores[area] += Math.round(weight * 3 * multiplier);
+      areaScores[area] += Math.round(weight * 2 * multiplier);
     }
   });
 }
@@ -162,7 +162,7 @@ function getPrimaryContextArea(signalId) {
 }
 
 function getForcedContextAreas(signal) {
-  if (signal.strength < 2) return [];
+  if (signal.strength !== 3) return [];
 
   if (signal.id === 'ctx-small-group-stronger') {
     return ['Leeromgeving', 'Groepsgenoten'];
@@ -286,15 +286,64 @@ export default function buildPersonalizedAdvice({
     applyWeightedContextBoost(areaScores, signal);
   });
 
-  if (contextInput.settingDifference !== 'unknown') {
-    areaScores.Leeromgeving += 1;
-    areaScores.Groepsgenoten += 1;
+  if (
+    contextInput.challengeResponse ===
+    'De leerling laat meer betrokkenheid zien wanneer het werk compact en echt uitdagend is.'
+  ) {
+    areaScores['Leerstof en opdrachten'] += 2;
+    areaScores.Leeractiviteiten += 2;
+  }
+
+  if (
+    contextInput.challengeResponse ===
+    'De leerling laat meer weerstand zien wanneer taken herhalend of te makkelijk zijn.'
+  ) {
+    areaScores['Leerstof en opdrachten'] += 2;
+    areaScores.Leeractiviteiten += 2;
+    areaScores.Instructie += 1;
+  }
+
+  if (
+    contextInput.challengeResponse ===
+    'De leerling laat juist meer stabiliteit zien wanneer taken voorspelbaar en duidelijk begrensd zijn.'
+  ) {
+    areaScores.Instructie += 2;
+    areaScores.Leeromgeving += 2;
+  }
+
+  if (
+    contextInput.settingDifference ===
+    'De leerling laat in een kleiner of veiliger verband meer zien dan in de hele groep.'
+  ) {
+    areaScores.Leeromgeving += 2;
+    areaScores.Groepsgenoten += 2;
+    areaScores.Feedback += 1;
+  }
+
+  if (
+    contextInput.settingDifference ===
+    'De leerling laat juist in verrijking of bij sterke peers meer initiatief en inhoud zien.'
+  ) {
+    areaScores.Groepsgenoten += 2;
+    areaScores['Leerstof en opdrachten'] += 2;
+    areaScores.Leeractiviteiten += 1;
+  }
+
+  if (
+    contextInput.settingDifference ===
+    'Het zichtbare functioneren verschilt sterk per les, taak of setting.'
+  ) {
+    areaScores.Leerkracht += 2;
+    areaScores.Leeromgeving += 2;
   }
 
   const prioritizedAreaNames = buildPrioritizedAreaNames(
     areaScores,
     activeContextSignals
   );
+
+  const overlapIsTight =
+    overlapProfile && profileBase.topScore - profileBase.secondScore <= 2;
 
   const prioritizedNeeds = prioritizedAreaNames.map((area) => {
     const primaryNeed = topNeedMap[area];
@@ -303,7 +352,7 @@ export default function buildPersonalizedAdvice({
       `Sluit aan bij ${normalizeText(topProfile.shortTitle).toLowerCase()}.`
     ];
 
-    if (overlapNeed) {
+    if (overlapIsTight && overlapNeed) {
       reasonParts.push(
         `Wordt extra relevant door overlap met ${normalizeText(
           overlapProfile.shortTitle
@@ -354,7 +403,7 @@ export default function buildPersonalizedAdvice({
       );
     }
 
-    const adviceText = overlapNeed
+    const adviceText = overlapIsTight && overlapNeed
       ? `${normalizeText(primaryNeed.advice)} Daarnaast is het helpend om ook mee te nemen dat ${normalizeText(
           overlapNeed.advice
         )
@@ -366,7 +415,8 @@ export default function buildPersonalizedAdvice({
       area,
       need: normalizeText(primaryNeed.need),
       advice: adviceText,
-      reason: reasonParts.join(' ')
+      reason: reasonParts.join(' '),
+      sharedByOverlap: Boolean(overlapIsTight && overlapNeed)
     };
   });
 
