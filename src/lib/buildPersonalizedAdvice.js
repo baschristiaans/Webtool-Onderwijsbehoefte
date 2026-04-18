@@ -101,8 +101,7 @@ const AREA_BOOSTS = {
 const CONTEXT_SIGNAL_AREA_WEIGHTS = {
   'ctx-small-group-stronger': {
     Leeromgeving: 4,
-    Feedback: 2,
-    Groepsgenoten: 1
+    Feedback: 2
   },
   'ctx-opens-up-with-choice': {
     Leeractiviteiten: 3,
@@ -110,8 +109,7 @@ const CONTEXT_SIGNAL_AREA_WEIGHTS = {
     Instructie: 1
   },
   'ctx-peer-match-helps': {
-    Groepsgenoten: 3,
-    Leeromgeving: 1
+    Groepsgenoten: 2
   },
   'ctx-drops-with-repetition': {
     'Leerstof en opdrachten': 3,
@@ -205,7 +203,7 @@ function applyWeightedContextBoost(areaScores, signal, topProfileId, overlapProf
 
   Object.entries(areaWeights).forEach(([area, weight]) => {
     if (area in areaScores) {
-      areaScores[area] += Math.round(weight * 1.5 * multiplier * alignmentMultiplier);
+      areaScores[area] += Math.round(weight * 1.25 * multiplier * alignmentMultiplier);
     }
   });
 }
@@ -318,7 +316,7 @@ function applyStep3Boosts(areaScores, contextInput) {
     contextInput.settingDifference ===
     'De leerling laat juist in verrijking of bij sterke peers meer initiatief en inhoud zien.'
   ) {
-    areaScores.Groepsgenoten += 2;
+    areaScores.Groepsgenoten += 1;
     areaScores['Leerstof en opdrachten'] += 2;
     areaScores.Leeractiviteiten += 1;
   }
@@ -329,6 +327,24 @@ function applyStep3Boosts(areaScores, contextInput) {
   ) {
     areaScores.Leerkracht += 2;
     areaScores.Leeromgeving += 2;
+  }
+}
+
+function applyProfileAreaGuards(areaScores, topProfileId) {
+  if (topProfileId === 'type2') {
+    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 2);
+  }
+
+  if (topProfileId === 'type5') {
+    areaScores.Leeromgeving = Math.max(0, areaScores.Leeromgeving - 3);
+    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 3);
+    areaScores.Instructie += 1;
+    areaScores['Leerstof en opdrachten'] += 1;
+    areaScores.Feedback += 1;
+  }
+
+  if (topProfileId === 'type6') {
+    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 2);
   }
 }
 
@@ -413,6 +429,7 @@ export default function buildPersonalizedAdvice({
   });
 
   applyStep3Boosts(areaScores, contextInput);
+  applyProfileAreaGuards(areaScores, topProfile.id);
 
   const prioritizedAreaNames = buildPrioritizedAreaNames(
     areaScores,
