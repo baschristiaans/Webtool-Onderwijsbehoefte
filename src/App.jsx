@@ -483,7 +483,13 @@ function App() {
             ${items
               .map(
                 (item) => `
-                  <div style="margin-bottom: 18px; padding: 12px; border: 1px solid #d9e1ea; border-radius: 8px;">
+                  <div style="
+  <div class="question-block" style="
+  margin-bottom: 18px;
+  padding: 12px;
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+">
                     <div style="font-weight: 600; margin-bottom: 10px;">
                       ${toDisplay(item.prompt)}
                     </div>
