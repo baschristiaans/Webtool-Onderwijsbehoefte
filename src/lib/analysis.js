@@ -99,7 +99,7 @@ function createEvidenceFlags() {
     type5: {
       hasStrengthIndicator: false,
       hasExecutionMismatchIndicator: false,
-      hasKnownBarrierContext: false
+      hasKnownSupportInfoContext: false
     }
   };
 }
@@ -144,7 +144,7 @@ function validateProfileEligibility(profileId, evidenceFlags) {
   if (
     flags.hasStrengthIndicator &&
     flags.hasExecutionMismatchIndicator &&
-    flags.hasKnownBarrierContext
+    flags.hasKnownSupportInfoContext
   ) {
     return {
       status: 'regular',
@@ -185,8 +185,8 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
   const contextSignals = [];
   const evidenceFlags = createEvidenceFlags();
 
-  if (contextInput.knownBarrierPresence === 'yes') {
-    evidenceFlags.type5.hasKnownBarrierContext = true;
+  if (contextInput.knownSupportInfoPresence === 'yes') {
+    evidenceFlags.type5.hasKnownSupportInfoContext = true;
   }
 
   observationItems.forEach((item) => {
@@ -303,6 +303,7 @@ function buildTestEvidenceEntries(testScores) {
 function summarizeTestLabels(entries) {
   return entries.map((entry) => `${entry.key}: ${entry.value}`).join(', ');
 }
+
 export function analyzeRichInterpretation({
   profileBase,
   zoovSignal,
@@ -331,14 +332,6 @@ export function analyzeRichInterpretation({
     });
   }
 
-  if (contextInput.challengeResponse !== 'unknown') {
-    interpretationSignals.push({
-      id: 'challenge-response',
-      prompt: contextInput.challengeResponse,
-      strength: 2
-    });
-  }
-
   if (homeInput.pattern !== 'unknown') {
     interpretationSignals.push({
       id: 'home-pattern',
@@ -350,13 +343,13 @@ export function analyzeRichInterpretation({
     });
   }
 
-  if (contextInput.knownBarrierPresence === 'yes') {
+  if (contextInput.knownSupportInfoPresence === 'yes') {
     interpretationSignals.push({
-      id: 'known-barrier',
+      id: 'known-support-info',
       prompt:
-        contextInput.knownBarrierNote?.trim()
-          ? `Bekende dossierinformatie over relevante belemmering of diagnose: ${contextInput.knownBarrierNote.trim()}`
-          : 'Er is bekende dossierinformatie over een relevante belemmering of diagnose.',
+        contextInput.knownSupportInfoNote?.trim()
+          ? `Bekende dossierinformatie over relevante ondersteuningsinformatie: ${contextInput.knownSupportInfoNote.trim()}`
+          : 'Er is bekende dossierinformatie over relevante ondersteuningsinformatie.',
       strength: 2
     });
   }
@@ -406,13 +399,13 @@ export function analyzeRichInterpretation({
 
   if (
     profileBase.topProfileId === 'type5' &&
-    contextInput.knownBarrierPresence === 'yes' &&
+    contextInput.knownSupportInfoPresence === 'yes' &&
     ['discrepantie tussen inzicht en basisvaardigheid', 'grillig of gemengd prestatiebeeld'].includes(
       performanceLabel
     )
   ) {
     discrepancySignals.push(
-      'Er zijn signalen die kunnen passen bij een profielrichting waarin sterke kanten en bekende belemmeringen samen aandacht vragen.'
+      'Er zijn signalen die kunnen passen bij een profielrichting waarin sterke kanten en bekende ondersteuningsinformatie samen aandacht vragen.'
     );
   }
 
@@ -424,12 +417,6 @@ export function analyzeRichInterpretation({
   ) {
     discrepancySignals.push(
       'De lagere of wisselende resultaten passen niet vanzelfsprekend bij deze profielrichting. Het is verstandig te verkennen waardoor deze prestaties ontstaan.'
-    );
-  }
-
-  if (contextInput.expressionDifference === 'oral-stronger') {
-    discrepancySignals.push(
-      'Er is een zichtbaar verschil tussen mondeling functioneren en schriftelijke output.'
     );
   }
 
@@ -450,9 +437,9 @@ export function analyzeRichInterpretation({
     );
   }
 
-  if (contextInput.knownBarrierPresence === 'yes') {
+  if (contextInput.knownSupportInfoPresence === 'yes') {
     interpretationSummaryParts.push(
-      'Bekende dossierinformatie over een relevante belemmering vraagt om terughoudende interpretatie van het profielbeeld en om afstemming tussen uitdaging en ondersteuning.'
+      'Bekende dossierinformatie vraagt om terughoudende interpretatie van het profielbeeld en om afstemming tussen uitdaging en ondersteuning.'
     );
   }
 
@@ -467,8 +454,8 @@ export function analyzeRichInterpretation({
     discrepancySignals,
     interpretationSignals,
     interpretationSummary: interpretationSummaryParts.join(' '),
-    knownBarrierPresence: contextInput.knownBarrierPresence,
-    knownBarrierNote: contextInput.knownBarrierNote || ''
+    knownSupportInfoPresence: contextInput.knownSupportInfoPresence,
+    knownSupportInfoNote: contextInput.knownSupportInfoNote || ''
   };
 }
 

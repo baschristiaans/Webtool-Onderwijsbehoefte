@@ -87,7 +87,6 @@ const PROFILE_ANCHOR_BOOSTS = {
 const AREA_BOOSTS = {
   underachievement: ['Leerkracht', 'Leeromgeving', 'Leerstof en opdrachten'],
   twiceExceptional: ['Instructie', 'Leerstof en opdrachten', 'Leeractiviteiten', 'Feedback'],
-  oralWrittenGap: ['Instructie', 'Leeractiviteiten', 'Feedback'],
   socialVisibility: ['Leeromgeving', 'Feedback', 'Groepsgenoten'],
   selfDirection: ['Leerstof en opdrachten', 'Leeractiviteiten', 'Leerkracht']
 };
@@ -268,32 +267,8 @@ function buildPrioritizedAreaNames(areaScores, activeContextSignals, topProfileI
 
   return unique(prioritized).slice(0, 4);
 }
+
 function applyStep3Boosts(areaScores, contextInput) {
-  if (
-    contextInput.challengeResponse ===
-    'De leerling laat meer betrokkenheid zien wanneer het werk compact en echt uitdagend is.'
-  ) {
-    areaScores['Leerstof en opdrachten'] += 2;
-    areaScores.Leeractiviteiten += 2;
-  }
-
-  if (
-    contextInput.challengeResponse ===
-    'De leerling laat meer weerstand zien wanneer taken herhalend of te makkelijk zijn.'
-  ) {
-    areaScores['Leerstof en opdrachten'] += 2;
-    areaScores.Leeractiviteiten += 2;
-    areaScores.Instructie += 1;
-  }
-
-  if (
-    contextInput.challengeResponse ===
-    'De leerling laat juist meer stabiliteit zien wanneer taken voorspelbaar en duidelijk begrensd zijn.'
-  ) {
-    areaScores.Instructie += 2;
-    areaScores.Leeromgeving += 2;
-  }
-
   if (
     contextInput.settingDifference ===
     'De leerling laat in een kleiner of veiliger verband meer zien dan in de hele groep.'
@@ -389,18 +364,10 @@ export default function buildPersonalizedAdvice({
 
   if (
     interpretation.discrepancySignals.some((signal) =>
-      signal.toLowerCase().includes('sterke kanten en bekende belemmeringen')
+      signal.toLowerCase().includes('sterke kanten en bekende ondersteuningsinformatie')
     )
   ) {
     boostAreas(areaScores, AREA_BOOSTS.twiceExceptional, 4);
-  }
-
-  if (
-    interpretation.discrepancySignals.some((signal) =>
-      signal.toLowerCase().includes('mondeling functioneren')
-    )
-  ) {
-    boostAreas(areaScores, AREA_BOOSTS.oralWrittenGap, 3);
   }
 
   if (topProfile.id === 'type3') {
@@ -458,17 +425,9 @@ export default function buildPersonalizedAdvice({
     }
 
     if (
-      area === 'Instructie' &&
-      interpretation.discrepancySignals.some((signal) =>
-        signal.toLowerCase().includes('schriftelijke output')
-      )
+      contextInput.knownSupportInfoPresence === 'yes' &&
+      topProfile.id === 'type5'
     ) {
-      reasonParts.push(
-        'Helpt om denken zichtbaar te maken zonder dat schriftelijke uitvoering direct blokkeert.'
-      );
-    }
-
-    if (contextInput.knownBarrierPresence === 'yes' && topProfile.id === 'type5') {
       reasonParts.push(
         'Bekende dossierinformatie vraagt om combinatie van uitdaging en passende ondersteuning.'
       );
@@ -498,9 +457,12 @@ export default function buildPersonalizedAdvice({
       ' Deze uitkomst is op basis van de huidige informatie nog onvoldoende onderbouwd als profielrichting.';
   }
 
-  if (contextInput.knownBarrierPresence === 'yes' && topProfile.id === 'type5') {
+  if (
+    contextInput.knownSupportInfoPresence === 'yes' &&
+    topProfile.id === 'type5'
+  ) {
     shortInterpretation +=
-      ' Lees deze uitkomst in samenhang met bekende dossierinformatie; de tool stelt geen belemmering of diagnose vast.';
+      ' Lees deze uitkomst in samenhang met bekende dossierinformatie; de tool stelt geen ondersteuningsbehoefte of diagnose vast.';
   }
 
   const followUpSteps = [
@@ -516,13 +478,13 @@ export default function buildPersonalizedAdvice({
     )
   ) {
     followUpSteps.push(
-      'Verken waardoor de lagere of wisselende prestaties ontstaan voordat hieraan conclusies over profiel of belemmering worden verbonden.'
+      'Verken waardoor de lagere of wisselende prestaties ontstaan voordat hieraan conclusies over profiel of ondersteuningsinformatie worden verbonden.'
     );
   }
 
   const caution =
     topProfile.id === 'type5'
-      ? 'Type 5 wordt in deze tool alleen terughoudend gelezen. De tool signaleert patronen in schoolfunctioneren, maar stelt geen belemmering of diagnose vast.'
+      ? 'Type 5 wordt in deze tool alleen terughoudend gelezen. De tool signaleert patronen in schoolfunctioneren, maar stelt geen diagnose of oorzaak vast.'
       : 'Deze uitkomst is een werkhypothese op basis van schoolse observaties en aanvullende contextinformatie. Het is geen diagnose.';
 
   const homeAttention =

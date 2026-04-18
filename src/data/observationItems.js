@@ -6,9 +6,6 @@ export const OBSERVATION_SCORE_OPTIONS = [
 ];
 
 const observationItems = [
-  // =========================================================
-  // Taakaanpak en leerhouding
-  // =========================================================
   {
     id: 'obs-seeks-confirmation',
     domain: 'task-approach',
@@ -46,9 +43,6 @@ const observationItems = [
     profileIds: ['type1']
   },
 
-  // =========================================================
-  // Reactie op aanbod en uitdaging
-  // =========================================================
   {
     id: 'obs-reacts-to-unfairness',
     domain: 'response-challenge',
@@ -113,9 +107,6 @@ const observationItems = [
     profileIds: ['type2']
   },
 
-  // =========================================================
-  // Sociale zichtbaarheid en afstemming
-  // =========================================================
   {
     id: 'obs-hides-strong-insights',
     domain: 'social-visibility',
@@ -153,9 +144,6 @@ const observationItems = [
     profileIds: ['type3']
   },
 
-  // =========================================================
-  // Betrokkenheid en schoolverbinding
-  // =========================================================
   {
     id: 'obs-resistant-schoolwork',
     domain: 'engagement',
@@ -202,9 +190,6 @@ const observationItems = [
     profileIds: ['type4']
   },
 
-  // =========================================================
-  // Uitvoering en leerproduct
-  // =========================================================
   {
     id: 'obs-planning-organization',
     domain: 'execution',
@@ -242,9 +227,6 @@ const observationItems = [
     profileIds: ['type5']
   },
 
-  // =========================================================
-  // Zelfsturing en ambitie
-  // =========================================================
   {
     id: 'obs-seeks-extra-challenge',
     domain: 'self-direction',
@@ -291,10 +273,6 @@ const observationItems = [
     profileIds: ['type6']
   },
 
-  // =========================================================
-  // Contextsignalen in school
-  // Let op: deze ids moeten gelijk blijven vanwege de advieslogica.
-  // =========================================================
   {
     id: 'ctx-small-group-stronger',
     domain: 'school-context',

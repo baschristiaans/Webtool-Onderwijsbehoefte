@@ -26,22 +26,6 @@ const ZOOV_OPTIONS = [
   { value: 'no', label: 'Nee, geen ZOOV+ startsignaal' }
 ];
 
-const CHALLENGE_RESPONSE_OPTIONS = [
-  { value: 'unknown', label: 'Niet ingevuld' },
-  {
-    value: 'De leerling laat meer betrokkenheid zien wanneer het werk compact en echt uitdagend is.',
-    label: 'Meer betrokken bij compacte, uitdagende taken'
-  },
-  {
-    value: 'De leerling laat meer weerstand zien wanneer taken herhalend of te makkelijk zijn.',
-    label: 'Meer weerstand bij herhaling of makkelijke taken'
-  },
-  {
-    value: 'De leerling laat juist meer stabiliteit zien wanneer taken voorspelbaar en duidelijk begrensd zijn.',
-    label: 'Stabieler bij voorspelbare, begrensde taken'
-  }
-];
-
 const SETTING_OPTIONS = [
   { value: 'unknown', label: 'Niet ingevuld' },
   {
@@ -58,22 +42,6 @@ const SETTING_OPTIONS = [
   }
 ];
 
-const EXPRESSION_OPTIONS = [
-  { value: 'unknown', label: 'Niet ingevuld' },
-  {
-    value: 'oral-stronger',
-    label: 'Mondeling duidelijk sterker dan schriftelijk'
-  },
-  {
-    value: 'written-stronger',
-    label: 'Schriftelijk duidelijk sterker dan mondeling'
-  },
-  {
-    value: 'mixed',
-    label: 'Verschil wisselt per taak'
-  }
-];
-
 const HOME_PATTERN_OPTIONS = [
   { value: 'unknown', label: 'Niet ingevuld' },
   {
@@ -86,15 +54,15 @@ const HOME_PATTERN_OPTIONS = [
   }
 ];
 
-const KNOWN_BARRIER_OPTIONS = [
+const KNOWN_SUPPORT_INFO_OPTIONS = [
   { value: 'unknown', label: 'Niet ingevuld' },
   {
     value: 'yes',
-    label: 'Ja, er is al bekende dossierinformatie over een relevante belemmering of diagnose'
+    label: 'Ja, er is al bekende relevante ondersteuningsinformatie'
   },
   {
     value: 'no',
-    label: 'Nee, er is geen bekende relevante dossierinformatie'
+    label: 'Nee, er is geen bekende relevante ondersteuningsinformatie'
   }
 ];
 
@@ -120,10 +88,10 @@ const HOME_PATTERN_LABELS = {
   contrast: 'Thuissituatie contrasteert met het schoolbeeld'
 };
 
-const KNOWN_BARRIER_LABELS = {
+const KNOWN_SUPPORT_INFO_LABELS = {
   unknown: 'Niet ingevuld',
-  yes: 'Ja, er is bekende dossierinformatie',
-  no: 'Nee, er is geen bekende dossierinformatie'
+  yes: 'Ja, er is bekende relevante ondersteuningsinformatie',
+  no: 'Nee, er is geen bekende relevante ondersteuningsinformatie'
 };
 
 const STUDENT_INITIAL = {
@@ -139,11 +107,9 @@ const ZOOV_INITIAL = {
 };
 
 const CONTEXT_INITIAL = {
-  challengeResponse: 'unknown',
   settingDifference: 'unknown',
-  expressionDifference: 'unknown',
-  knownBarrierPresence: 'unknown',
-  knownBarrierNote: '',
+  knownSupportInfoPresence: 'unknown',
+  knownSupportInfoNote: '',
   note: ''
 };
 
@@ -216,11 +182,12 @@ function buildExportText({
     `Notitie: ${zoovSignal.note || '-'}`,
     '',
     'Context',
-    `Reactie op uitdaging: ${contextInput.challengeResponse}`,
     `Verschillen tussen settings: ${contextInput.settingDifference}`,
-    `Mondeling / schriftelijk: ${contextInput.expressionDifference}`,
-    `Bekende belemmering aanwezig: ${KNOWN_BARRIER_LABELS[contextInput.knownBarrierPresence] || contextInput.knownBarrierPresence}`,
-    `Dossiernotitie belemmering: ${contextInput.knownBarrierNote || '-'}`,
+    `Bekende ondersteuningsinformatie: ${
+      KNOWN_SUPPORT_INFO_LABELS[contextInput.knownSupportInfoPresence] ||
+      contextInput.knownSupportInfoPresence
+    }`,
+    `Dossiernotitie: ${contextInput.knownSupportInfoNote || '-'}`,
     `Schoolcontext notitie: ${contextInput.note || '-'}`,
     '',
     'Thuissituatie',
@@ -292,6 +259,7 @@ function buildExportText({
 
   return lines.join('\n');
 }
+
 function App() {
   const profilesById = useMemo(buildProfilesById, []);
 
@@ -370,7 +338,7 @@ function App() {
       },
       {
         key: 'context',
-        title: 'Context, thuissituatie en dossierinformatie',
+        title: 'Aanvullende context',
         shortTitle: 'Stap 3'
       },
       {
@@ -521,15 +489,13 @@ function App() {
         `
       )
       .join('');
-        const html = `
+
+    const html = `
       <html>
         <head>
           <title>Printbaar observatieformulier</title>
           <style>
-            * {
-              box-sizing: border-box;
-            }
-
+            * { box-sizing: border-box; }
             body {
               font-family: Arial, sans-serif;
               color: #1f2a37;
@@ -537,17 +503,8 @@ function App() {
               line-height: 1.4;
               font-size: 14px;
             }
-
-            h1 {
-              font-size: 24px;
-              margin: 0 0 6px 0;
-            }
-
-            .subtitle {
-              margin: 0 0 20px 0;
-              color: #526274;
-            }
-
+            h1 { font-size: 24px; margin: 0 0 6px 0; }
+            .subtitle { margin: 0 0 20px 0; color: #526274; }
             .meta {
               margin-bottom: 24px;
               padding: 16px;
@@ -555,15 +512,8 @@ function App() {
               border-radius: 8px;
               background: #f8fafc;
             }
-
-            .meta-row {
-              margin-bottom: 10px;
-            }
-
-            .meta-row:last-child {
-              margin-bottom: 0;
-            }
-
+            .meta-row { margin-bottom: 10px; }
+            .meta-row:last-child { margin-bottom: 0; }
             .line {
               display: inline-block;
               min-width: 260px;
@@ -572,18 +522,13 @@ function App() {
               height: 18px;
               vertical-align: bottom;
             }
-
-            .observation-group {
-              margin-bottom: 28px;
-            }
-
+            .observation-group { margin-bottom: 28px; }
             .group-title {
               font-size: 18px;
               margin: 0 0 12px 0;
               page-break-after: avoid;
               break-after: avoid;
             }
-
             .question-block {
               margin-bottom: 16px;
               padding: 12px;
@@ -592,58 +537,29 @@ function App() {
               break-inside: avoid;
               page-break-inside: avoid;
             }
-
-            .question-text {
-              font-weight: 600;
-              margin-bottom: 10px;
-            }
-
+            .question-text { font-weight: 600; margin-bottom: 10px; }
             .question-options {
               display: flex;
               flex-wrap: wrap;
               gap: 14px 18px;
             }
-
             .question-options label {
               display: inline-flex;
               align-items: center;
               gap: 6px;
               white-space: nowrap;
             }
-
-            @media print {
-              body {
-                margin: 14mm;
-              }
-
-              .observation-group {
-                break-inside: auto;
-                page-break-inside: auto;
-              }
-
-              .question-block {
-                break-inside: avoid;
-                page-break-inside: avoid;
-              }
-
-              .group-title {
-                page-break-after: avoid;
-                break-after: avoid;
-              }
-            }
           </style>
         </head>
         <body>
           <h1>Printbaar observatieformulier</h1>
           <p class="subtitle">Webtool profiel en onderwijsbehoefte</p>
-
           <div class="meta">
             <div class="meta-row"><strong>Naam leerling:</strong><span class="line"></span></div>
             <div class="meta-row"><strong>Groep:</strong><span class="line"></span></div>
             <div class="meta-row"><strong>Datum:</strong><span class="line"></span></div>
             <div class="meta-row"><strong>Ingevuld door:</strong><span class="line"></span></div>
           </div>
-
           ${groupedHtml}
         </body>
       </html>
@@ -665,13 +581,8 @@ function App() {
       );
     }
 
-    if (step.key === 'tests') {
-      return true;
-    }
-
-    if (step.key === 'context') {
-      return true;
-    }
+    if (step.key === 'tests') return true;
+    if (step.key === 'context') return true;
 
     if (step.key === 'observations') {
       return currentObservationValue !== null && currentObservationValue !== undefined;
@@ -681,9 +592,7 @@ function App() {
       return isChecklistConfirmed && isDisclaimerConfirmed;
     }
 
-    if (step.key === 'results') {
-      return true;
-    }
+    if (step.key === 'results') return true;
 
     return true;
   }
@@ -824,7 +733,8 @@ function App() {
             <h2>Toetsgegevens</h2>
           </div>
         </div>
-          <p className="helper-text">
+
+        <p className="helper-text">
           Vul hier het prestatiebeeld in. Deze gegevens tellen niet mee in de ruwe
           profielscore, maar worden wel gebruikt voor het prestatiebeeld en eventuele
           discrepantiesignalen.
@@ -857,27 +767,11 @@ function App() {
         <div className="panel-head">
           <div>
             <p className="section-label">Stap 3</p>
-            <h2>Context, thuissituatie en dossierinformatie</h2>
+            <h2>Aanvullende context</h2>
           </div>
         </div>
 
         <div className="field-grid">
-          <label className="field">
-            <span>Reactie op uitdaging</span>
-            <select
-              value={contextInput.challengeResponse}
-              onChange={(event) =>
-                handleContextChange('challengeResponse', event.target.value)
-              }
-            >
-              {CHALLENGE_RESPONSE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <label className="field">
             <span>Verschillen tussen settings</span>
             <select
@@ -895,14 +789,14 @@ function App() {
           </label>
 
           <label className="field">
-            <span>Mondeling en schriftelijk functioneren</span>
+            <span>Bekende relevante ondersteuningsinformatie</span>
             <select
-              value={contextInput.expressionDifference}
+              value={contextInput.knownSupportInfoPresence}
               onChange={(event) =>
-                handleContextChange('expressionDifference', event.target.value)
+                handleContextChange('knownSupportInfoPresence', event.target.value)
               }
             >
-              {EXPRESSION_OPTIONS.map((option) => (
+              {KNOWN_SUPPORT_INFO_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -910,30 +804,14 @@ function App() {
             </select>
           </label>
 
-          <label className="field">
-            <span>Bekende relevante belemmering of diagnose</span>
-            <select
-              value={contextInput.knownBarrierPresence}
-              onChange={(event) =>
-                handleContextChange('knownBarrierPresence', event.target.value)
-              }
-            >
-              {KNOWN_BARRIER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {contextInput.knownBarrierPresence === 'yes' && (
+          {contextInput.knownSupportInfoPresence === 'yes' && (
             <label className="field">
               <span>Korte dossiernotitie</span>
               <textarea
                 rows="3"
-                value={contextInput.knownBarrierNote}
+                value={contextInput.knownSupportInfoNote}
                 onChange={(event) =>
-                  handleContextChange('knownBarrierNote', event.target.value)
+                  handleContextChange('knownSupportInfoNote', event.target.value)
                 }
               />
             </label>
@@ -1028,6 +906,7 @@ function App() {
             <span>{observationProgressPercent}% voltooid</span>
           </div>
         </div>
+
         <article className="observation-card">
           <div className="observation-card-head">
             <p>{toDisplay(item.prompt)}</p>
@@ -1070,7 +949,8 @@ function App() {
             <h2>Controle en disclaimer</h2>
           </div>
         </div>
-               <div className="field-grid">
+
+        <div className="field-grid">
           <div className="secondary-card">
             <strong>Samenvatting</strong>
             <p>Naam: {student.name || '-'}</p>
@@ -1433,4 +1313,4 @@ function App() {
   );
 }
 
-export default App;         
+export default App;
