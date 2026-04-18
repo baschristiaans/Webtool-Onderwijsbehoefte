@@ -109,7 +109,7 @@ const CONTEXT_SIGNAL_AREA_WEIGHTS = {
     Instructie: 1
   },
   'ctx-peer-match-helps': {
-    Groepsgenoten: 2
+    Groepsgenoten: 1
   },
   'ctx-drops-with-repetition': {
     'Leerstof en opdrachten': 3,
@@ -203,7 +203,7 @@ function applyWeightedContextBoost(areaScores, signal, topProfileId, overlapProf
 
   Object.entries(areaWeights).forEach(([area, weight]) => {
     if (area in areaScores) {
-      areaScores[area] += Math.round(weight * 1.25 * multiplier * alignmentMultiplier);
+      areaScores[area] += Math.round(weight * 1.0 * multiplier * alignmentMultiplier);
     }
   });
 }
@@ -220,7 +220,11 @@ function getForcedContextAreas(signal, topProfileId, overlapProfileId) {
   if (!signalMatchesProfiles(signal, topProfileId, overlapProfileId)) return [];
 
   if (signal.id === 'ctx-small-group-stronger') {
-    return ['Leeromgeving'];
+    return topProfileId === 'type3' ? ['Leeromgeving'] : [];
+  }
+
+  if (signal.id === 'ctx-peer-match-helps') {
+    return [];
   }
 
   const primaryArea = getPrimaryContextArea(signal.id);
@@ -316,9 +320,9 @@ function applyStep3Boosts(areaScores, contextInput) {
     contextInput.settingDifference ===
     'De leerling laat juist in verrijking of bij sterke peers meer initiatief en inhoud zien.'
   ) {
-    areaScores.Groepsgenoten += 1;
     areaScores['Leerstof en opdrachten'] += 2;
     areaScores.Leeractiviteiten += 1;
+    areaScores.Feedback += 1;
   }
 
   if (
@@ -332,19 +336,21 @@ function applyStep3Boosts(areaScores, contextInput) {
 
 function applyProfileAreaGuards(areaScores, topProfileId) {
   if (topProfileId === 'type2') {
-    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 2);
+    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 3);
+    areaScores.Feedback += 1;
   }
 
   if (topProfileId === 'type5') {
-    areaScores.Leeromgeving = Math.max(0, areaScores.Leeromgeving - 3);
-    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 3);
+    areaScores.Leeromgeving = Math.max(0, areaScores.Leeromgeving - 4);
+    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 4);
     areaScores.Instructie += 1;
-    areaScores['Leerstof en opdrachten'] += 1;
+    areaScores['Leerstof en opdrachten'] += 2;
     areaScores.Feedback += 1;
   }
 
   if (topProfileId === 'type6') {
-    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 2);
+    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 3);
+    areaScores.Feedback += 1;
   }
 }
 
