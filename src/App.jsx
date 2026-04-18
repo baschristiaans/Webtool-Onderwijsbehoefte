@@ -463,7 +463,6 @@ function App() {
 
   const handlePrintObservationForm = () => {
     const printWindow = window.open('', '_blank', 'width=900,height=1200');
-
     if (!printWindow) return;
 
     const groupedItems = observationItems.reduce((groups, item) => {
@@ -478,22 +477,14 @@ function App() {
     const groupedHtml = Object.entries(groupedItems)
       .map(
         ([groupLabel, items]) => `
-          <section style="margin-bottom: 28px;">
-            <h2 style="font-size: 18px; margin: 0 0 12px 0;">${groupLabel}</h2>
+          <section class="observation-group">
+            <h2 class="group-title">${groupLabel}</h2>
             ${items
               .map(
                 (item) => `
-                  <div style="
-  <div class="question-block" style="
-  margin-bottom: 18px;
-  padding: 12px;
-  border: 1px solid #d9e1ea;
-  border-radius: 8px;
-">
-                    <div style="font-weight: 600; margin-bottom: 10px;">
-                      ${toDisplay(item.prompt)}
-                    </div>
-                    <div style="display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px;">
+                  <div class="question-block">
+                    <div class="question-text">${toDisplay(item.prompt)}</div>
+                    <div class="question-options">
                       <label><input type="checkbox" /> Niet waargenomen</label>
                       <label><input type="checkbox" /> Licht zichtbaar</label>
                       <label><input type="checkbox" /> Duidelijk zichtbaar</label>
@@ -513,16 +504,28 @@ function App() {
         <head>
           <title>Printbaar observatieformulier</title>
           <style>
+            * {
+              box-sizing: border-box;
+            }
+
             body {
               font-family: Arial, sans-serif;
               color: #1f2a37;
-              margin: 32px;
+              margin: 28px;
               line-height: 1.4;
+              font-size: 14px;
             }
+
             h1 {
               font-size: 24px;
-              margin-bottom: 8px;
+              margin: 0 0 6px 0;
             }
+
+            .subtitle {
+              margin: 0 0 20px 0;
+              color: #526274;
+            }
+
             .meta {
               margin-bottom: 24px;
               padding: 16px;
@@ -530,26 +533,87 @@ function App() {
               border-radius: 8px;
               background: #f8fafc;
             }
+
             .meta-row {
-              margin-bottom: 8px;
+              margin-bottom: 10px;
             }
+
+            .meta-row:last-child {
+              margin-bottom: 0;
+            }
+
             .line {
               display: inline-block;
               min-width: 260px;
               border-bottom: 1px solid #6b7280;
               margin-left: 8px;
               height: 18px;
+              vertical-align: bottom;
             }
+
+            .observation-group {
+              margin-bottom: 28px;
+            }
+
+            .group-title {
+              font-size: 18px;
+              margin: 0 0 12px 0;
+              page-break-after: avoid;
+              break-after: avoid;
+            }
+
+            .question-block {
+              margin-bottom: 16px;
+              padding: 12px;
+              border: 1px solid #d9e1ea;
+              border-radius: 8px;
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+
+            .question-text {
+              font-weight: 600;
+              margin-bottom: 10px;
+            }
+
+            .question-options {
+              display: flex;
+              flex-wrap: wrap;
+              gap: 14px 18px;
+            }
+
+            .question-options label {
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              white-space: nowrap;
+            }
+
             @media print {
               body {
-                margin: 16mm;
+                margin: 14mm;
+              }
+
+              .observation-group {
+                break-inside: auto;
+                page-break-inside: auto;
+              }
+
+              .question-block {
+                break-inside: avoid;
+                page-break-inside: avoid;
+              }
+
+              .group-title {
+                page-break-after: avoid;
+                break-after: avoid;
               }
             }
           </style>
         </head>
         <body>
           <h1>Printbaar observatieformulier</h1>
-          <p>Webtool profiel en onderwijsbehoefte</p>
+          <p class="subtitle">Webtool profiel en onderwijsbehoefte</p>
 
           <div class="meta">
             <div class="meta-row"><strong>Naam leerling:</strong><span class="line"></span></div>
@@ -603,7 +667,8 @@ function App() {
   }
 
   const canGoNext = isStepComplete(currentStepConfig);
-  const canGoBack = currentStep > 0 || (isObservationPhase && currentObservationIndex > 0);
+  const canGoBack =
+    currentStep > 0 || (isObservationPhase && currentObservationIndex > 0);
 
   const handleNext = () => {
     if (!canGoNext) return;
@@ -613,7 +678,6 @@ function App() {
         setCurrentObservationIndex((value) => value + 1);
         return;
       }
-
       setCurrentStep(reviewStepIndex);
       return;
     }
@@ -637,7 +701,6 @@ function App() {
         setCurrentObservationIndex((value) => value - 1);
         return;
       }
-
       setCurrentStep((value) => value - 1);
       return;
     }
@@ -739,11 +802,13 @@ function App() {
             <h2>Toetsgegevens</h2>
           </div>
         </div>
+
         <p className="helper-text">
           Vul hier het prestatiebeeld in. Deze gegevens tellen niet mee in de ruwe
           profielscore, maar worden wel gebruikt voor het prestatiebeeld en eventuele
           discrepantiesignalen.
         </p>
+
         <div className="field-grid two-columns">
           {Object.entries(TEST_FIELD_LABELS).map(([key, label]) => (
             <label className="field" key={key}>
