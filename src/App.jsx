@@ -154,26 +154,6 @@ function buildProfilesById() {
   return Object.fromEntries(profiles.map((profile) => [profile.id, profile]));
 }
 
-function groupObservationItems() {
-  const groups = [];
-
-  observationItems.forEach((item) => {
-    const existingGroup = groups.find((group) => group.domain === item.domain);
-    if (existingGroup) {
-      existingGroup.items.push(item);
-      return;
-    }
-
-    groups.push({
-      domain: item.domain,
-      label: item.domainLabel,
-      items: [item]
-    });
-  });
-
-  return groups;
-}
-
 function formatProfileHeading(profile) {
   return `${toDisplay(profile.shortTitle)} - ${toDisplay(profile.title)}`;
 }
@@ -291,7 +271,6 @@ function buildExportText({
 
 function App() {
   const profilesById = useMemo(buildProfilesById, []);
-  const observationGroups = useMemo(groupObservationItems, []);
 
   const [student, setStudent] = useState(STUDENT_INITIAL);
   const [zoovSignal, setZoovSignal] = useState(ZOOV_INITIAL);
@@ -302,6 +281,7 @@ function App() {
   const [notes, setNotes] = useState(NOTES_INITIAL);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [currentObservationIndex, setCurrentObservationIndex] = useState(0);
   const [isChecklistConfirmed, setIsChecklistConfirmed] = useState(false);
   const [isDisclaimerConfirmed, setIsDisclaimerConfirmed] = useState(false);
 
@@ -353,63 +333,7 @@ function App() {
     ? profilesById[profileBase.overlapProfileId]
     : null;
 
-  const steps = useMemo(() => {
-    const baseSteps = [
-      {
-        key: 'student',
-        title: 'Leerlinggegevens en aanleiding',
-        shortTitle: 'Stap 1'
-      },
-      {
-        key: 'tests',
-        title: 'Toetsgegevens',
-        shortTitle: 'Stap 2'
-      },
-      {
-        key: 'context',
-        title: 'Context en thuissituatie',
-        shortTitle: 'Stap 3'
-      }
-    ];
-
-    const observationSteps = observationGroups.map((group, index) => ({
-      key: `observations-${group.domain}`,
-      title: group.label,
-      shortTitle: `Observaties ${index + 1}`,
-      domain: group.domain
-    }));
-
-    return [
-      ...baseSteps,
-      ...observationSteps,
-      {
-        key: 'review',
-        title: 'Controle en disclaimer',
-        shortTitle: 'Controle'
-      },
-      {
-        key: 'results',
-        title: 'Uitkomst',
-        shortTitle: 'Resultaat'
-      }
-    ];
-  }, [observationGroups]);
-
-  const reviewStepIndex = steps.findIndex((step) => step.key === 'review');
-  const resultStepIndex = steps.findIndex((step) => step.key === 'results');
-  const currentStepConfig = steps[currentStep];
-  const currentObservationGroup = currentStepConfig?.domain
-    ? observationGroups.find((group) => group.domain === currentStepConfig.domain)
-    : null;
-
-  const isObservationPhase = Boolean(currentStepConfig?.domain);
-  const currentObservationPage = currentObservationGroup
-    ? observationGroups.findIndex(
-        (group) => group.domain === currentObservationGroup.domain
-      ) + 1
-    : 0;
-
-  const displaySteps = useMemo(
+  const steps = useMemo(
     () => [
       {
         key: 'student',
@@ -445,12 +369,19 @@ function App() {
     []
   );
 
-  const currentDisplayStep = useMemo(() => {
-    if (isObservationPhase) return 3;
-    if (currentStepConfig?.key === 'review') return 4;
-    if (currentStepConfig?.key === 'results') return 5;
-    return currentStep;
-  }, [currentStep, currentStepConfig, isObservationPhase]);
+  const reviewStepIndex = steps.findIndex((step) => step.key === 'review');
+  const resultStepIndex = steps.findIndex((step) => step.key === 'results');
+  const observationsStepIndex = steps.findIndex((step) => step.key === 'observations');
+  const currentStepConfig = steps[currentStep];
+
+  const isObservationPhase = currentStepConfig?.key === 'observations';
+  const currentObservationItem = observationItems[currentObservationIndex] || null;
+  const currentObservationValue = currentObservationItem
+    ? observationAnswers[currentObservationItem.id]
+    : null;
+  const observationProgressPercent = Math.round(
+    ((currentObservationIndex + 1) / observationItems.length) * 100
+  );
 
   useEffect(() => {
     if (!isProfileModalOpen) return undefined;
@@ -502,6 +433,7 @@ function App() {
     setNotes(NOTES_INITIAL);
     setIsProfileModalOpen(false);
     setCurrentStep(0);
+    setCurrentObservationIndex(0);
     setIsChecklistConfirmed(false);
     setIsDisclaimerConfirmed(false);
   };
@@ -533,7 +465,9 @@ function App() {
     if (!step) return false;
 
     if (step.key === 'student') {
-      return Boolean(student.name.trim() && student.group.trim() && student.observer.trim());
+      return Boolean(
+        student.name.trim() && student.group.trim() && student.observer.trim()
+      );
     }
 
     if (step.key === 'tests') {
@@ -544,6 +478,10 @@ function App() {
       return true;
     }
 
+    if (step.key === 'observations') {
+      return currentObservationValue !== null && currentObservationValue !== undefined;
+    }
+
     if (step.key === 'review') {
       return isChecklistConfirmed && isDisclaimerConfirmed;
     }
@@ -552,31 +490,52 @@ function App() {
       return true;
     }
 
-    if (step.domain) {
-      const group = observationGroups.find((item) => item.domain === step.domain);
-      if (!group) return true;
-
-      return group.items.every(
-        (item) =>
-          observationAnswers[item.id] !== null &&
-          observationAnswers[item.id] !== undefined
-      );
-    }
-
     return true;
   }
 
   const canGoNext = isStepComplete(currentStepConfig);
-  const canGoBack = currentStep > 0;
+  const canGoBack = currentStep > 0 || (isObservationPhase && currentObservationIndex > 0);
 
   const handleNext = () => {
-    if (!canGoNext || currentStep >= steps.length - 1) return;
-    setCurrentStep((value) => value + 1);
+    if (!canGoNext) return;
+
+    if (currentStepConfig.key === 'observations') {
+      if (currentObservationIndex < observationItems.length - 1) {
+        setCurrentObservationIndex((value) => value + 1);
+        return;
+      }
+
+      setCurrentStep(reviewStepIndex);
+      return;
+    }
+
+    if (currentStep < steps.length - 1) {
+      setCurrentStep((value) => value + 1);
+    }
   };
 
   const handlePrevious = () => {
     if (!canGoBack) return;
-    setCurrentStep((value) => value - 1);
+
+    if (currentStepConfig.key === 'review') {
+      setCurrentStep(observationsStepIndex);
+      setCurrentObservationIndex(observationItems.length - 1);
+      return;
+    }
+
+    if (currentStepConfig.key === 'observations') {
+      if (currentObservationIndex > 0) {
+        setCurrentObservationIndex((value) => value - 1);
+        return;
+      }
+
+      setCurrentStep((value) => value - 1);
+      return;
+    }
+
+    if (currentStep > 0) {
+      setCurrentStep((value) => value - 1);
+    }
   };
 
   function renderStudentStep() {
@@ -789,8 +748,8 @@ function App() {
     );
   }
 
-  function renderObservationStep(group) {
-    if (!group) return null;
+  function renderObservationStep(item) {
+    if (!item) return null;
 
     return (
       <article className="panel">
@@ -799,49 +758,79 @@ function App() {
             <p className="section-label">Stap 4</p>
             <h2>Observaties</h2>
             <p className="helper-text">
-              Observatiepagina {currentObservationPage} van {observationGroups.length}: {toDisplay(group.label)}
+              Vraag {currentObservationIndex + 1} van {observationItems.length}
             </p>
           </div>
         </div>
 
+        <div style={{ marginBottom: '1rem' }}>
+          <div
+            style={{
+              width: '100%',
+              height: '10px',
+              background: '#e8eef5',
+              borderRadius: '999px',
+              overflow: 'hidden'
+            }}
+          >
+            <div
+              style={{
+                width: `${observationProgressPercent}%`,
+                height: '100%',
+                background: '#4f7cff',
+                borderRadius: '999px',
+                transition: 'width 0.2s ease'
+              }}
+            />
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginTop: '0.5rem',
+              fontSize: '0.9rem',
+              color: '#5b6b7f'
+            }}
+          >
+            <span>{toDisplay(item.domainLabel)}</span>
+            <span>{observationProgressPercent}% voltooid</span>
+          </div>
+        </div>
+
         <p className="helper-text">
-          Beoordeel per uitspraak hoe zichtbaar dit gedrag of functioneren op dit
-          moment is. Ook ‘0 = niet waargenomen’ is een geldige keuze. Je kunt pas
-          verder wanneer alle uitspraken op deze pagina bewust zijn ingevuld.
+          Beoordeel hoe zichtbaar dit gedrag of functioneren op dit moment is.
+          Ook ‘0 = niet waargenomen’ is een geldige keuze.
         </p>
 
-        <div className="observation-list">
-          {group.items.map((item) => (
-            <article className="observation-card" key={item.id}>
-              <div className="observation-card-head">
-                <p>{toDisplay(item.prompt)}</p>
-                <span className={`chip chip-${item.category}`}>
-                  {item.category === 'core'
-                    ? 'Kernobservatie'
-                    : item.category === 'supporting'
-                      ? 'Ondersteunend'
-                      : 'Contextsignaal'}
-                </span>
-              </div>
-              <div className="option-row">
-                {OBSERVATION_SCORE_OPTIONS.map((option) => (
-                  <label className="option-card" key={option.value}>
-                    <input
-                      type="radio"
-                      name={item.id}
-                      value={option.value}
-                      checked={observationAnswers[item.id] === option.value}
-                      onChange={(event) =>
-                        handleObservationChange(item.id, event.target.value)
-                      }
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
+        <article className="observation-card">
+          <div className="observation-card-head">
+            <p>{toDisplay(item.prompt)}</p>
+            <span className={`chip chip-${item.category}`}>
+              {item.category === 'core'
+                ? 'Kernobservatie'
+                : item.category === 'supporting'
+                  ? 'Ondersteunend'
+                  : 'Contextsignaal'}
+            </span>
+          </div>
+
+          <div className="option-row">
+            {OBSERVATION_SCORE_OPTIONS.map((option) => (
+              <label className="option-card" key={option.value}>
+                <input
+                  type="radio"
+                  name={item.id}
+                  value={option.value}
+                  checked={observationAnswers[item.id] === option.value}
+                  onChange={(event) =>
+                    handleObservationChange(item.id, event.target.value)
+                  }
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+        </article>
       </article>
     );
   }
@@ -851,7 +840,7 @@ function App() {
       <article className="panel">
         <div className="panel-head">
           <div>
-            <p className="section-label">Controle</p>
+            <p className="section-label">Stap 5</p>
             <h2>Controle en disclaimer</h2>
           </div>
         </div>
@@ -1045,9 +1034,11 @@ function App() {
     if (currentStepConfig.key === 'student') return renderStudentStep();
     if (currentStepConfig.key === 'tests') return renderTestsStep();
     if (currentStepConfig.key === 'context') return renderContextStep();
+    if (currentStepConfig.key === 'observations') {
+      return renderObservationStep(currentObservationItem);
+    }
     if (currentStepConfig.key === 'review') return renderReviewStep();
     if (currentStepConfig.key === 'results') return renderResultsStep();
-    if (currentStepConfig.domain) return renderObservationStep(currentObservationGroup);
     return null;
   }
 
@@ -1068,11 +1059,11 @@ function App() {
                 {answeredObservationCount} observaties ingevuld
               </span>
               <span className="pill">
-                Stap {currentDisplayStep + 1} van {displaySteps.length}
+                Stap {currentStep + 1} van {steps.length}
               </span>
               {isObservationPhase && (
                 <span className="pill">
-                  Observatiepagina {currentObservationPage} van {observationGroups.length}
+                  Vraag {currentObservationIndex + 1} van {observationItems.length}
                 </span>
               )}
             </div>
@@ -1083,9 +1074,9 @@ function App() {
       <main className="container app-layout">
         <section className="input-column">
           <div className="progress-strip">
-            {displaySteps.map((step, index) => {
-              const isActive = index === currentDisplayStep;
-              const isDone = index < currentDisplayStep;
+            {steps.map((step, index) => {
+              const isActive = index === currentStep;
+              const isDone = index < currentStep;
 
               return (
                 <div
@@ -1121,7 +1112,9 @@ function App() {
                 {currentStepConfig.key !== 'review' && currentStepConfig.key !== 'results' && (
                   <span className="helper-text">
                     {canGoNext
-                      ? 'Je kunt doorgaan naar de volgende stap.'
+                      ? currentStepConfig.key === 'observations'
+                        ? 'Je kunt doorgaan naar de volgende vraag.'
+                        : 'Je kunt doorgaan naar de volgende stap.'
                       : 'Vul eerst de benodigde informatie in om verder te gaan.'}
                   </span>
                 )}
@@ -1133,7 +1126,13 @@ function App() {
                 onClick={handleNext}
                 disabled={!canGoNext}
               >
-                {currentStep === reviewStepIndex ? 'Toon uitkomst' : 'Volgende'}
+                {currentStepConfig.key === 'observations'
+                  ? currentObservationIndex === observationItems.length - 1
+                    ? 'Naar controle'
+                    : 'Volgende vraag'
+                  : currentStep === reviewStepIndex
+                    ? 'Toon uitkomst'
+                    : 'Volgende'}
               </button>
             </article>
           )}
