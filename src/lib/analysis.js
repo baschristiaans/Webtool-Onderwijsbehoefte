@@ -11,8 +11,8 @@ export const PROFILE_IDS = [
 
 export const PROFILE_DIRECTION_THRESHOLDS = {
   minimumTopScore: 12,
-  clearDifference: 6,
-  cautiousDifference: 3
+  clearDifference: 5,
+  cautiousDifference: 2
 };
 
 const CATEGORY_POINTS = {
