@@ -461,6 +461,109 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const handlePrintObservationForm = () => {
+    const printWindow = window.open('', '_blank', 'width=900,height=1200');
+
+    if (!printWindow) return;
+
+    const groupedItems = observationItems.reduce((groups, item) => {
+      const groupLabel = toDisplay(item.domainLabel);
+      if (!groups[groupLabel]) {
+        groups[groupLabel] = [];
+      }
+      groups[groupLabel].push(item);
+      return groups;
+    }, {});
+
+    const groupedHtml = Object.entries(groupedItems)
+      .map(
+        ([groupLabel, items]) => `
+          <section style="margin-bottom: 28px;">
+            <h2 style="font-size: 18px; margin: 0 0 12px 0;">${groupLabel}</h2>
+            ${items
+              .map(
+                (item) => `
+                  <div style="margin-bottom: 18px; padding: 12px; border: 1px solid #d9e1ea; border-radius: 8px;">
+                    <div style="font-weight: 600; margin-bottom: 10px;">
+                      ${toDisplay(item.prompt)}
+                    </div>
+                    <div style="display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px;">
+                      <label><input type="checkbox" /> Niet waargenomen</label>
+                      <label><input type="checkbox" /> Licht zichtbaar</label>
+                      <label><input type="checkbox" /> Duidelijk zichtbaar</label>
+                      <label><input type="checkbox" /> Sterk zichtbaar</label>
+                    </div>
+                  </div>
+                `
+              )
+              .join('')}
+          </section>
+        `
+      )
+      .join('');
+
+    const html = `
+      <html>
+        <head>
+          <title>Printbaar observatieformulier</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              color: #1f2a37;
+              margin: 32px;
+              line-height: 1.4;
+            }
+            h1 {
+              font-size: 24px;
+              margin-bottom: 8px;
+            }
+            .meta {
+              margin-bottom: 24px;
+              padding: 16px;
+              border: 1px solid #d9e1ea;
+              border-radius: 8px;
+              background: #f8fafc;
+            }
+            .meta-row {
+              margin-bottom: 8px;
+            }
+            .line {
+              display: inline-block;
+              min-width: 260px;
+              border-bottom: 1px solid #6b7280;
+              margin-left: 8px;
+              height: 18px;
+            }
+            @media print {
+              body {
+                margin: 16mm;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Printbaar observatieformulier</h1>
+          <p>Webtool profiel en onderwijsbehoefte</p>
+
+          <div class="meta">
+            <div class="meta-row"><strong>Naam leerling:</strong><span class="line"></span></div>
+            <div class="meta-row"><strong>Groep:</strong><span class="line"></span></div>
+            <div class="meta-row"><strong>Datum:</strong><span class="line"></span></div>
+            <div class="meta-row"><strong>Ingevuld door:</strong><span class="line"></span></div>
+          </div>
+
+          ${groupedHtml}
+        </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
   function isStepComplete(step) {
     if (!step) return false;
 
@@ -546,6 +649,14 @@ function App() {
             <p className="section-label">Stap 1</p>
             <h2>Leerlinggegevens en aanleiding</h2>
           </div>
+
+          <button
+            type="button"
+            className="ghost-button"
+            onClick={handlePrintObservationForm}
+          >
+            Print observatieformulier
+          </button>
         </div>
 
         <div className="field-grid two-columns">
