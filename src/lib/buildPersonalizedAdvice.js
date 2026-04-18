@@ -92,12 +92,6 @@ const AREA_BOOSTS = {
   selfDirection: ['Leerstof en opdrachten', 'Leeractiviteiten', 'Leerkracht']
 };
 
-/*
-  Gewogen contextkoppeling:
-  - primary = gebied dat het meest direct geraakt wordt
-  - secondary = logisch volgend gebied
-  - tertiary = ondersteunend gebied
-*/
 const CONTEXT_SIGNAL_AREA_WEIGHTS = {
   'ctx-small-group-stronger': {
     Leeromgeving: 4,
@@ -174,13 +168,6 @@ function applyAnchorBoosts(areaScores, profileId) {
   });
 }
 
-function summarizeObservations(observations) {
-  return observations
-    .slice(0, 3)
-    .map((item) => normalizeText(item.prompt).toLowerCase())
-    .join('; ');
-}
-
 function getContextStrengthMultiplier(strength) {
   if (strength === 3) return 1;
   if (strength === 2) return 0.75;
@@ -203,7 +190,7 @@ function applyWeightedContextBoost(areaScores, signal, topProfileId, overlapProf
 
   Object.entries(areaWeights).forEach(([area, weight]) => {
     if (area in areaScores) {
-      areaScores[area] += Math.round(weight * 1.0 * multiplier * alignmentMultiplier);
+      areaScores[area] += Math.round(weight * multiplier * alignmentMultiplier);
     }
   });
 }
@@ -281,7 +268,6 @@ function buildPrioritizedAreaNames(areaScores, activeContextSignals, topProfileI
 
   return unique(prioritized).slice(0, 4);
 }
-
 function applyStep3Boosts(areaScores, contextInput) {
   if (
     contextInput.challengeResponse ===
@@ -403,7 +389,7 @@ export default function buildPersonalizedAdvice({
 
   if (
     interpretation.discrepancySignals.some((signal) =>
-      signal.toLowerCase().includes('dubbel-bijzonder')
+      signal.toLowerCase().includes('sterke kanten en bekende belemmeringen')
     )
   ) {
     boostAreas(areaScores, AREA_BOOSTS.twiceExceptional, 4);
@@ -482,134 +468,74 @@ export default function buildPersonalizedAdvice({
       );
     }
 
-    if (
-      area === 'Leeromgeving' &&
-      contextInput.settingDifference !== 'unknown'
-    ) {
+    if (contextInput.knownBarrierPresence === 'yes' && topProfile.id === 'type5') {
       reasonParts.push(
-        'De setting lijkt invloed te hebben op wat deze leerling laat zien.'
+        'Bekende dossierinformatie vraagt om combinatie van uitdaging en passende ondersteuning.'
       );
     }
-
-    if (
-      area === 'Leerkracht' &&
-      interpretation.discrepancySignals.some((signal) =>
-        signal.toLowerCase().includes('onderprestatie')
-      )
-    ) {
-      reasonParts.push(
-        'Een beschikbare en heldere leerkracht is hier waarschijnlijk de ingang tot herstel van betrokkenheid.'
-      );
-    }
-
-    const adviceText = overlapIsTight && overlapNeed
-      ? `${normalizeText(primaryNeed.advice)} Daarnaast is het helpend om ook mee te nemen dat ${normalizeText(
-          overlapNeed.advice
-        )
-          .charAt(0)
-          .toLowerCase()}${normalizeText(overlapNeed.advice).slice(1)}`
-      : normalizeText(primaryNeed.advice);
 
     return {
       area,
-      need: normalizeText(primaryNeed.need),
-      advice: adviceText,
+      need: primaryNeed?.need || '',
+      advice: primaryNeed?.advice || '',
       reason: reasonParts.join(' '),
       sharedByOverlap: Boolean(overlapIsTight && overlapNeed)
     };
   });
 
-  const strongestObservationText =
-    profileBase.strongestObservations.length > 0
-      ? summarizeObservations(profileBase.strongestObservations)
-      : 'er zijn nog te weinig sterke observaties ingevuld';
+  let workHypothesis = topProfile.interpretation;
+  let shortInterpretation = `De observaties wijzen vooral in de richting van ${normalizeText(
+    topProfile.shortTitle
+  ).toLowerCase()} (${normalizeText(topProfile.title).toLowerCase()}).`;
 
-  const workHypothesis = overlapProfile
-    ? `Werkhypothese: ${normalizeText(topProfile.shortTitle)} - ${normalizeText(
-        topProfile.title
-      )} past op dit moment het best, met inhoudelijke overlap naar ${normalizeText(
-        overlapProfile.shortTitle
-      )} - ${normalizeText(overlapProfile.title)}.`
-    : `Werkhypothese: ${normalizeText(topProfile.shortTitle)} - ${normalizeText(
-        topProfile.title
-      )} past op dit moment het best bij het observeerbare functioneren in school.`;
+  if (profileBase.profileStatusById[topProfile.id]?.status === 'cautious') {
+    shortInterpretation +=
+      ' Deze uitkomst vraagt terughoudende interpretatie en kan voorlopig alleen als signaleringsrichting worden gelezen.';
+  }
 
-  const shortInterpretationParts = [
-    `Deze richting wordt vooral ondersteund door observaties zoals ${strongestObservationText}.`
+  if (profileBase.profileStatusById[topProfile.id]?.status === 'insufficient') {
+    shortInterpretation +=
+      ' Deze uitkomst is op basis van de huidige informatie nog onvoldoende onderbouwd als profielrichting.';
+  }
+
+  if (contextInput.knownBarrierPresence === 'yes' && topProfile.id === 'type5') {
+    shortInterpretation +=
+      ' Lees deze uitkomst in samenhang met bekende dossierinformatie; de tool stelt geen belemmering of diagnose vast.';
+  }
+
+  const followUpSteps = [
+    'Bespreek de werkhypothese met collega’s of intern begeleider.',
+    'Kijk welke onderwijsaanpassingen direct in de klas uitgeprobeerd kunnen worden.',
+    'Evalueer na een periode opnieuw of de gekozen aanpak het functioneren zichtbaar verandert.'
   ];
 
-  if (interpretation.interpretationSummary) {
-    shortInterpretationParts.push(
-      normalizeText(interpretation.interpretationSummary)
-    );
-  }
-
-  if (interpretation.discrepancySignals.length > 0) {
-    shortInterpretationParts.push(
-      `Daarnaast vraagt het discrepantiebeeld aandacht: ${interpretation.discrepancySignals
-        .slice(0, 2)
-        .map((signal) => normalizeText(signal))
-        .join(' ')}`
-    );
-  }
-
-  const teacherActions = prioritizedNeeds.map((need) => ({
-    area: need.area,
-    action: need.advice
-  }));
-
-  const followUpSteps = [];
-
-  if (profileBase.profileDirectionLabel === 'nog onvoldoende richting') {
-    followUpSteps.push(
-      'Observeer nog gerichter in meerdere lessituaties voordat een stevige profielrichting wordt aangehouden.'
-    );
-  }
-
   if (
+    ['type1', 'type2', 'type6'].includes(topProfile.id) &&
     interpretation.discrepancySignals.some((signal) =>
-      signal.toLowerCase().includes('schriftelijke output')
+      signal.toLowerCase().includes('lagere of wisselende resultaten')
     )
   ) {
     followUpSteps.push(
-      'Leg mondeling functioneren, schriftelijk werk en taakuitvoering naast elkaar om te bepalen waar de uitvoering vastloopt.'
+      'Verken waardoor de lagere of wisselende prestaties ontstaan voordat hieraan conclusies over profiel of belemmering worden verbonden.'
     );
   }
 
-  if (
-    interpretation.discrepancySignals.some(
-      (signal) =>
-        signal.toLowerCase().includes('onderprestatie') ||
-        signal.toLowerCase().includes('dubbel-bijzonder')
-    )
-  ) {
-    followUpSteps.push(
-      'Plan een gerichte leerlingbespreking met observaties, toetsgegevens en verschillen tussen taaksoorten of settings naast elkaar.'
-    );
-  }
-
-  if (homeInput.pattern !== 'unknown' || homeInput.summary.trim()) {
-    followUpSteps.push(
-      'Neem informatie van thuis mee als context voor verdere duiding, zonder die informatie direct mee te laten tellen in de profielscore.'
-    );
-  }
+  const caution =
+    topProfile.id === 'type5'
+      ? 'Type 5 wordt in deze tool alleen terughoudend gelezen. De tool signaleert patronen in schoolfunctioneren, maar stelt geen belemmering of diagnose vast.'
+      : 'Deze uitkomst is een werkhypothese op basis van schoolse observaties en aanvullende contextinformatie. Het is geen diagnose.';
 
   const homeAttention =
-    homeInput.pattern !== 'unknown' || homeInput.summary.trim()
-      ? normalizeText(
-          topNeedMap['Thuissituatie / ouders']?.need ||
-            'Thuissituatie is hier vooral een aandachtspunt voor afstemming en nadere analyse.'
-        )
-      : null;
+    homeInput.pattern === 'contrast'
+      ? 'Het schoolbeeld contrasteert met de thuissituatie; neem dit verschil expliciet mee in verdere duiding.'
+      : '';
 
   return {
-    workHypothesis,
-    shortInterpretation: shortInterpretationParts.join(' '),
     prioritizedNeeds,
-    teacherActions,
-    followUpSteps: unique(followUpSteps).slice(0, 4),
-    homeAttention,
-    caution:
-      'Dit blijft een werkhypothese. Observeerbaar functioneren vormt de profielbasis; context, thuissituatie, ZOOV+ en toetsgegevens scherpen alleen de interpretatie aan.'
+    workHypothesis,
+    shortInterpretation,
+    followUpSteps,
+    caution,
+    homeAttention
   };
 }

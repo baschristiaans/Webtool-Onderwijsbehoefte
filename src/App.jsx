@@ -86,6 +86,18 @@ const HOME_PATTERN_OPTIONS = [
   }
 ];
 
+const KNOWN_BARRIER_OPTIONS = [
+  { value: 'unknown', label: 'Niet ingevuld' },
+  {
+    value: 'yes',
+    label: 'Ja, er is al bekende dossierinformatie over een relevante belemmering of diagnose'
+  },
+  {
+    value: 'no',
+    label: 'Nee, er is geen bekende relevante dossierinformatie'
+  }
+];
+
 const TEST_FIELD_LABELS = {
   dmt: 'DMT',
   avi: 'AVI',
@@ -108,6 +120,12 @@ const HOME_PATTERN_LABELS = {
   contrast: 'Thuissituatie contrasteert met het schoolbeeld'
 };
 
+const KNOWN_BARRIER_LABELS = {
+  unknown: 'Niet ingevuld',
+  yes: 'Ja, er is bekende dossierinformatie',
+  no: 'Nee, er is geen bekende dossierinformatie'
+};
+
 const STUDENT_INITIAL = {
   name: '',
   group: '',
@@ -124,6 +142,8 @@ const CONTEXT_INITIAL = {
   challengeResponse: 'unknown',
   settingDifference: 'unknown',
   expressionDifference: 'unknown',
+  knownBarrierPresence: 'unknown',
+  knownBarrierNote: '',
   note: ''
 };
 
@@ -199,6 +219,8 @@ function buildExportText({
     `Reactie op uitdaging: ${contextInput.challengeResponse}`,
     `Verschillen tussen settings: ${contextInput.settingDifference}`,
     `Mondeling / schriftelijk: ${contextInput.expressionDifference}`,
+    `Bekende belemmering aanwezig: ${KNOWN_BARRIER_LABELS[contextInput.knownBarrierPresence] || contextInput.knownBarrierPresence}`,
+    `Dossiernotitie belemmering: ${contextInput.knownBarrierNote || '-'}`,
     `Schoolcontext notitie: ${contextInput.note || '-'}`,
     '',
     'Thuissituatie',
@@ -217,7 +239,8 @@ function buildExportText({
     '',
     'Score-overzicht per profiel',
     ...scoreOverview.map(
-      (item) => `${item.shortTitle} - ${item.title}: ${item.score}`
+      (item) =>
+        `${item.shortTitle} - ${item.title}: ${item.score} (${item.status.label})`
     ),
     '',
     'Prestatiebeeld',
@@ -251,7 +274,8 @@ function buildExportText({
     ...advice.prioritizedNeeds.flatMap((item) => [
       `${item.area}${item.sharedByOverlap ? ' (extra relevant bij overlap)' : ''}`,
       `Onderwijsbehoefte: ${item.need}`,
-      `Advies: ${item.advice}`
+      `Advies: ${item.advice}`,
+      `Waarom: ${item.reason}`
     ]),
     '',
     'Vervolg',
@@ -261,14 +285,13 @@ function buildExportText({
     notes || '-',
     '',
     'Kanttekening',
-    'Dit is een werkhypothese.',
+    advice.caution,
     'Dit is geen diagnose.',
-    'Context, thuissituatie, ZOOV+ en toetsgegevens tellen niet mee in de ruwe profielscore.'
+    'Context, dossierinformatie, thuissituatie, ZOOV+ en toetsgegevens tellen niet mee in de ruwe profielscore.'
   ];
 
   return lines.join('\n');
 }
-
 function App() {
   const profilesById = useMemo(buildProfilesById, []);
 
@@ -294,8 +317,8 @@ function App() {
   );
 
   const profileBase = useMemo(
-    () => analyzeProfileBase(observationAnswers),
-    [observationAnswers]
+    () => analyzeProfileBase(observationAnswers, contextInput),
+    [observationAnswers, contextInput]
   );
 
   const interpretation = useMemo(
@@ -347,7 +370,7 @@ function App() {
       },
       {
         key: 'context',
-        title: 'Context en thuissituatie',
+        title: 'Context, thuissituatie en dossierinformatie',
         shortTitle: 'Stap 3'
       },
       {
@@ -498,8 +521,7 @@ function App() {
         `
       )
       .join('');
-
-    const html = `
+        const html = `
       <html>
         <head>
           <title>Printbaar observatieformulier</title>
@@ -709,7 +731,8 @@ function App() {
       setCurrentStep((value) => value - 1);
     }
   };
-    function renderStudentStep() {
+
+  function renderStudentStep() {
     return (
       <article className="panel">
         <div className="panel-head">
@@ -801,8 +824,7 @@ function App() {
             <h2>Toetsgegevens</h2>
           </div>
         </div>
-
-        <p className="helper-text">
+          <p className="helper-text">
           Vul hier het prestatiebeeld in. Deze gegevens tellen niet mee in de ruwe
           profielscore, maar worden wel gebruikt voor het prestatiebeeld en eventuele
           discrepantiesignalen.
@@ -835,7 +857,7 @@ function App() {
         <div className="panel-head">
           <div>
             <p className="section-label">Stap 3</p>
-            <h2>Context en thuissituatie</h2>
+            <h2>Context, thuissituatie en dossierinformatie</h2>
           </div>
         </div>
 
@@ -887,6 +909,35 @@ function App() {
               ))}
             </select>
           </label>
+
+          <label className="field">
+            <span>Bekende relevante belemmering of diagnose</span>
+            <select
+              value={contextInput.knownBarrierPresence}
+              onChange={(event) =>
+                handleContextChange('knownBarrierPresence', event.target.value)
+              }
+            >
+              {KNOWN_BARRIER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {contextInput.knownBarrierPresence === 'yes' && (
+            <label className="field">
+              <span>Korte dossiernotitie</span>
+              <textarea
+                rows="3"
+                value={contextInput.knownBarrierNote}
+                onChange={(event) =>
+                  handleContextChange('knownBarrierNote', event.target.value)
+                }
+              />
+            </label>
+          )}
 
           <label className="field">
             <span>Aanvullende schoolcontext</span>
@@ -1025,8 +1076,7 @@ function App() {
             <h2>Controle en disclaimer</h2>
           </div>
         </div>
-
-        <div className="field-grid">
+               <div className="field-grid">
           <div className="secondary-card">
             <strong>Samenvatting</strong>
             <p>Naam: {student.name || '-'}</p>
@@ -1075,7 +1125,8 @@ function App() {
       </article>
     );
   }
-    function renderResultsStep() {
+
+  function renderResultsStep() {
     return (
       <div className="output-column">
         <article className="panel result-panel">
@@ -1083,6 +1134,9 @@ function App() {
             <div>
               <p className="section-label">Profielbeeld</p>
               <h2>{formatProfileHeading(bestProfile)}</h2>
+              <p className="helper-text">
+                {profileBase.profileStatusById[bestProfile.id]?.label}
+              </p>
             </div>
             <button
               type="button"
@@ -1117,6 +1171,7 @@ function App() {
                 <div>
                   <strong>{item.shortTitle}</strong>
                   <span>{item.title}</span>
+                  <small>{item.status.label}</small>
                 </div>
                 <strong>{item.score}</strong>
               </div>
@@ -1172,6 +1227,9 @@ function App() {
                 </p>
                 <p>
                   <strong>Advies:</strong> {item.advice}
+                </p>
+                <p>
+                  <strong>Waarom:</strong> {item.reason}
                 </p>
                 {item.sharedByOverlap && (
                   <span className="pill subtle-pill">Extra relevant bij overlap</span>
@@ -1369,7 +1427,7 @@ function App() {
               <div className="modal-section">
                 <strong>Contextnoot</strong>
                 <p>
-                  Thuissituatie, toetsgegevens en verschillen tussen settings kunnen dit
+                  Dossierinformatie, thuissituatie, toetsgegevens en verschillen tussen settings kunnen dit
                   profielbeeld versterken of nuanceren, maar tellen niet mee in de ruwe profielscore.
                 </p>
               </div>
@@ -1381,4 +1439,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;         

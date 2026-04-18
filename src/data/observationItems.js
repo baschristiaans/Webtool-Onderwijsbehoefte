@@ -172,7 +172,7 @@ const observationItems = [
     prompt:
       'De leerling rondt werk regelmatig beperkt of onvolledig af.',
     category: 'core',
-    profileIds: ['type4', 'type5']
+    profileIds: ['type4']
   },
   {
     id: 'obs-low-effort-low-meaning',
@@ -230,6 +230,15 @@ const observationItems = [
     prompt:
       'De leerling laat wisselende kwaliteit zien tussen begrijpen, denken en uitvoeren.',
     category: 'supporting',
+    profileIds: ['type5']
+  },
+  {
+    id: 'obs-strong-insight-weak-product',
+    domain: 'execution',
+    domainLabel: 'Uitvoering en leerproduct',
+    prompt:
+      'De leerling laat sterke inzichten of begrip zien, maar schooltaken geven daarvan geen passend beeld.',
+    category: 'core',
     profileIds: ['type5']
   },
 
@@ -300,25 +309,25 @@ const observationItems = [
     domain: 'school-context',
     domainLabel: 'Contextsignalen in school',
     prompt:
-      'De leerling toont meer betrokkenheid wanneer er keuzevrijheid is.',
+      'De leerling laat meer initiatief, diepgang of betrokkenheid zien wanneer er keuzevrijheid is.',
     category: 'context',
-    profileIds: ['type2', 'type6']
+    profileIds: ['type2', 'type4', 'type6']
   },
   {
     id: 'ctx-peer-match-helps',
     domain: 'school-context',
     domainLabel: 'Contextsignalen in school',
     prompt:
-      'De leerling functioneert sterker bij cognitief of inhoudelijk passende peers.',
+      'De leerling functioneert sterker wanneer hij of zij samenwerkt met cognitief of inhoudelijk passende peers.',
     category: 'context',
-    profileIds: ['type2', 'type3', 'type6']
+    profileIds: ['type3', 'type6']
   },
   {
     id: 'ctx-drops-with-repetition',
     domain: 'school-context',
     domainLabel: 'Contextsignalen in school',
     prompt:
-      'De leerling zakt zichtbaar weg bij herhalende of te makkelijke taken.',
+      'De leerling zakt zichtbaar weg bij herhaling of te makkelijke taken.',
     category: 'context',
     profileIds: ['type2', 'type4']
   },
@@ -327,9 +336,9 @@ const observationItems = [
     domain: 'school-context',
     domainLabel: 'Contextsignalen in school',
     prompt:
-      'De leerling laat in gesprek meer zien dan in schriftelijk werk.',
+      'De leerling laat in gesprek of mondeling meer zien dan in schriftelijk werk.',
     category: 'context',
-    profileIds: ['type2', 'type5']
+    profileIds: ['type5']
   }
 ];
 

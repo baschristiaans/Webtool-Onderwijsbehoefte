@@ -94,11 +94,100 @@ function describeStrength(answerValue) {
   return 'niet waargenomen';
 }
 
-export function analyzeProfileBase(observationAnswers) {
+function createEvidenceFlags() {
+  return {
+    type5: {
+      hasStrengthIndicator: false,
+      hasExecutionMismatchIndicator: false,
+      hasKnownBarrierContext: false
+    }
+  };
+}
+
+function applyContraIndicators(scoresByProfile, observationAnswers) {
+  const strongType6Items = [
+    'obs-seeks-extra-challenge',
+    'obs-sets-goals',
+    'obs-uses-errors-for-learning',
+    'obs-sustains-challenging-task'
+  ];
+
+  const strongType6Count = strongType6Items.filter(
+    (id) => Number(observationAnswers[id] ?? 0) >= 2
+  ).length;
+
+  if (strongType6Count >= 2) {
+    scoresByProfile.type1 = Math.max(0, scoresByProfile.type1 - 2);
+    scoresByProfile.type4 = Math.max(0, scoresByProfile.type4 - 2);
+  }
+
+  const strongType1Items = ['obs-seeks-confirmation', 'obs-safe-approach'];
+  const strongType1Count = strongType1Items.filter(
+    (id) => Number(observationAnswers[id] ?? 0) >= 2
+  ).length;
+
+  if (strongType1Count >= 2) {
+    scoresByProfile.type6 = Math.max(0, scoresByProfile.type6 - 2);
+  }
+}
+
+function validateProfileEligibility(profileId, evidenceFlags) {
+  if (profileId !== 'type5') {
+    return {
+      status: 'regular',
+      label: 'reguliere profielrichting'
+    };
+  }
+
+  const flags = evidenceFlags.type5;
+
+  if (
+    flags.hasStrengthIndicator &&
+    flags.hasExecutionMismatchIndicator &&
+    flags.hasKnownBarrierContext
+  ) {
+    return {
+      status: 'regular',
+      label: 'reguliere profielrichting'
+    };
+  }
+
+  if (flags.hasStrengthIndicator && flags.hasExecutionMismatchIndicator) {
+    return {
+      status: 'cautious',
+      label: 'voorzichtig: alleen als signaleringsrichting lezen'
+    };
+  }
+
+  return {
+    status: 'insufficient',
+    label: 'onvoldoende onderbouwd als profielrichting'
+  };
+}
+
+function applyEligibilityAdjustments(scoresByProfile, evidenceFlags) {
+  const status = validateProfileEligibility('type5', evidenceFlags).status;
+
+  if (status === 'insufficient') {
+    scoresByProfile.type5 = Math.max(0, scoresByProfile.type5 - 6);
+  }
+
+  if (status === 'cautious') {
+    scoresByProfile.type5 = Math.max(0, scoresByProfile.type5 - 3);
+  }
+}
+
+export function analyzeProfileBase(observationAnswers, contextInput = {}) {
+  const rawScoresByProfile = createEmptyProfileMap(() => 0);
   const scoresByProfile = createEmptyProfileMap(() => 0);
   const supportingObservationsByProfile = createEmptyProfileMap(() => []);
   const scoreItems = observationItems.filter((item) => item.category !== 'context');
   const contextSignals = [];
+  const evidenceFlags = createEvidenceFlags();
+
+  if (contextInput.knownBarrierPresence === 'yes') {
+    evidenceFlags.type5.hasKnownBarrierContext = true;
+  }
 
   observationItems.forEach((item) => {
     const answerValue = Number(observationAnswers[item.id] ?? 0);
@@ -111,11 +200,32 @@ export function analyzeProfileBase(observationAnswers) {
         strength: answerValue,
         linkedProfiles: item.profileIds
       });
+
+      if (item.id === 'ctx-oral-written-gap') {
+        evidenceFlags.type5.hasExecutionMismatchIndicator = true;
+      }
+
       return;
+    }
+
+    if (
+      item.id === 'obs-written-less-than-thinking' ||
+      item.id === 'obs-strong-insight-weak-product'
+    ) {
+      evidenceFlags.type5.hasStrengthIndicator = true;
+      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
+    }
+
+    if (
+      item.id === 'obs-planning-organization' ||
+      item.id === 'obs-inconsistent-quality'
+    ) {
+      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
     }
 
     const points = CATEGORY_POINTS[item.category][answerValue];
     item.profileIds.forEach((profileId) => {
+      rawScoresByProfile[profileId] += points;
       scoresByProfile[profileId] += points;
       supportingObservationsByProfile[profileId].push({
         id: item.id,
@@ -128,21 +238,43 @@ export function analyzeProfileBase(observationAnswers) {
     });
   });
 
+  applyContraIndicators(scoresByProfile, observationAnswers);
+  applyEligibilityAdjustments(scoresByProfile, evidenceFlags);
+
+  const profileStatusById = Object.fromEntries(
+    PROFILE_IDS.map((profileId) => [
+      profileId,
+      validateProfileEligibility(profileId, evidenceFlags)
+    ])
+  );
+
   const sortedProfiles = PROFILE_IDS.map((profileId) => ({
     profileId,
+    rawScore: rawScoresByProfile[profileId],
     score: scoresByProfile[profileId],
+    status: profileStatusById[profileId],
     evidence: supportingObservationsByProfile[profileId].sort(
       (left, right) => right.scoreContribution - left.scoreContribution
     )
-  })).sort((left, right) => right.score - left.score);
+  })).sort((left, right) => {
+    if (right.score !== left.score) return right.score - left.score;
+    if (left.status.status !== right.status.status) {
+      const rank = { regular: 2, cautious: 1, insufficient: 0 };
+      return rank[right.status.status] - rank[left.status.status];
+    }
+    return right.rawScore - left.rawScore;
+  });
 
   const topProfile = sortedProfiles[0];
   const secondProfile = sortedProfiles[1];
 
   return {
     scoreItems,
+    rawScoresByProfile,
     scoresByProfile,
     sortedProfiles,
+    profileStatusById,
+    evidenceFlags,
     topProfileId: topProfile.profileId,
     overlapProfileId:
       topProfile.score > 0 &&
@@ -171,7 +303,6 @@ function buildTestEvidenceEntries(testScores) {
 function summarizeTestLabels(entries) {
   return entries.map((entry) => `${entry.key}: ${entry.value}`).join(', ');
 }
-
 export function analyzeRichInterpretation({
   profileBase,
   zoovSignal,
@@ -216,6 +347,17 @@ export function analyzeRichInterpretation({
           ? 'Thuissituatie contrasteert met het schoolbeeld.'
           : 'Thuissituatie bevestigt het schoolbeeld grotendeels.',
       strength: 1
+    });
+  }
+
+  if (contextInput.knownBarrierPresence === 'yes') {
+    interpretationSignals.push({
+      id: 'known-barrier',
+      prompt:
+        contextInput.knownBarrierNote?.trim()
+          ? `Bekende dossierinformatie over relevante belemmering of diagnose: ${contextInput.knownBarrierNote.trim()}`
+          : 'Er is bekende dossierinformatie over een relevante belemmering of diagnose.',
+      strength: 2
     });
   }
 
@@ -264,12 +406,24 @@ export function analyzeRichInterpretation({
 
   if (
     profileBase.topProfileId === 'type5' &&
+    contextInput.knownBarrierPresence === 'yes' &&
     ['discrepantie tussen inzicht en basisvaardigheid', 'grillig of gemengd prestatiebeeld'].includes(
       performanceLabel
     )
   ) {
     discrepancySignals.push(
-      'Het profielbeeld en het toetspatroon geven aanwijzingen voor mogelijke dubbel-bijzonderheid.'
+      'Er zijn signalen die kunnen passen bij een profielrichting waarin sterke kanten en bekende belemmeringen samen aandacht vragen.'
+    );
+  }
+
+  if (
+    ['type1', 'type2', 'type6'].includes(profileBase.topProfileId) &&
+    ['zwak of kwetsbaar prestatiebeeld', 'grillig of gemengd prestatiebeeld'].includes(
+      performanceLabel
+    )
+  ) {
+    discrepancySignals.push(
+      'De lagere of wisselende resultaten passen niet vanzelfsprekend bij deze profielrichting. Het is verstandig te verkennen waardoor deze prestaties ontstaan.'
     );
   }
 
@@ -296,39 +450,39 @@ export function analyzeRichInterpretation({
     );
   }
 
-  if (profileBase.overlapProfileId) {
+  if (contextInput.knownBarrierPresence === 'yes') {
     interpretationSummaryParts.push(
-      'Er is inhoudelijke overlap zichtbaar met een tweede profiel, dus de werkhypothese vraagt om genuanceerde interpretatie.'
+      'Bekende dossierinformatie over een relevante belemmering vraagt om terughoudende interpretatie van het profielbeeld en om afstemming tussen uitdaging en ondersteuning.'
     );
   }
 
-  if (contextInput.note.trim()) {
-    interpretationSummaryParts.push(
-      `Extra context uit school: ${normalizeText(contextInput.note.trim())}.`
-    );
-  }
-
-  if (notes.trim()) {
-    interpretationSummaryParts.push(
-      `Notitie van de leerkracht: ${normalizeText(notes.trim())}.`
-    );
+  if (notes?.trim()) {
+    interpretationSummaryParts.push(`Notities: ${notes.trim()}`);
   }
 
   return {
+    knownTests,
     performanceLabel,
     performanceSummary,
     discrepancySignals,
     interpretationSignals,
     interpretationSummary: interpretationSummaryParts.join(' '),
-    knownTests
+    knownBarrierPresence: contextInput.knownBarrierPresence,
+    knownBarrierNote: contextInput.knownBarrierNote || ''
   };
 }
 
 export function buildProfileScoreOverview(profileBase, profilesById) {
-  return profileBase.sortedProfiles.map((item) => ({
-    profileId: item.profileId,
-    title: normalizeText(profilesById[item.profileId].title),
-    shortTitle: normalizeText(profilesById[item.profileId].shortTitle),
-    score: item.score
-  }));
+  return profileBase.sortedProfiles.map((item) => {
+    const profile = profilesById[item.profileId];
+
+    return {
+      profileId: item.profileId,
+      shortTitle: normalizeText(profile.shortTitle),
+      title: normalizeText(profile.title),
+      score: item.score,
+      rawScore: item.rawScore,
+      status: item.status
+    };
+  });
 }
