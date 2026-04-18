@@ -45,9 +45,48 @@ const PROFILE_PRIORITY_AREAS = {
   ]
 };
 
+const PROFILE_ANCHOR_BOOSTS = {
+  type1: {
+    'Leerstof en opdrachten': 2,
+    Feedback: 2,
+    Leerkracht: 1
+  },
+  type2: {
+    Leerkracht: 3,
+    'Leerstof en opdrachten': 3,
+    Feedback: 2,
+    Leeractiviteiten: 1
+  },
+  type3: {
+    Leeromgeving: 3,
+    Feedback: 2,
+    Groepsgenoten: 2,
+    Leerkracht: 1
+  },
+  type4: {
+    Leerkracht: 3,
+    Leeromgeving: 3,
+    'Leerstof en opdrachten': 2,
+    Feedback: 1
+  },
+  type5: {
+    Instructie: 4,
+    'Leerstof en opdrachten': 4,
+    Leeractiviteiten: 3,
+    Feedback: 2,
+    Leerkracht: 1
+  },
+  type6: {
+    'Leerstof en opdrachten': 3,
+    Leeractiviteiten: 3,
+    Feedback: 2,
+    Leerkracht: 1
+  }
+};
+
 const AREA_BOOSTS = {
   underachievement: ['Leerkracht', 'Leeromgeving', 'Leerstof en opdrachten'],
-  twiceExceptional: ['Instructie', 'Leerstof en opdrachten', 'Leeractiviteiten'],
+  twiceExceptional: ['Instructie', 'Leerstof en opdrachten', 'Leeractiviteiten', 'Feedback'],
   oralWrittenGap: ['Instructie', 'Leeractiviteiten', 'Feedback'],
   socialVisibility: ['Leeromgeving', 'Feedback', 'Groepsgenoten'],
   selfDirection: ['Leerstof en opdrachten', 'Leeractiviteiten', 'Leerkracht']
@@ -62,8 +101,8 @@ const AREA_BOOSTS = {
 const CONTEXT_SIGNAL_AREA_WEIGHTS = {
   'ctx-small-group-stronger': {
     Leeromgeving: 4,
-    Groepsgenoten: 3,
-    Feedback: 1
+    Feedback: 2,
+    Groepsgenoten: 1
   },
   'ctx-opens-up-with-choice': {
     Leeractiviteiten: 3,
@@ -72,7 +111,7 @@ const CONTEXT_SIGNAL_AREA_WEIGHTS = {
   },
   'ctx-peer-match-helps': {
     Groepsgenoten: 3,
-    Leeromgeving: 2
+    Leeromgeving: 1
   },
   'ctx-drops-with-repetition': {
     'Leerstof en opdrachten': 3,
@@ -128,6 +167,15 @@ function boostAreas(areaScores, areas, amount) {
   });
 }
 
+function applyAnchorBoosts(areaScores, profileId) {
+  const boosts = PROFILE_ANCHOR_BOOSTS[profileId] || {};
+  Object.entries(boosts).forEach(([area, amount]) => {
+    if (area in areaScores) {
+      areaScores[area] += amount;
+    }
+  });
+}
+
 function summarizeObservations(observations) {
   return observations
     .slice(0, 3)
@@ -141,15 +189,23 @@ function getContextStrengthMultiplier(strength) {
   return 0.5;
 }
 
-function applyWeightedContextBoost(areaScores, signal) {
+function signalMatchesProfiles(signal, topProfileId, overlapProfileId) {
+  const linked = signal.linkedProfiles || [];
+  return linked.includes(topProfileId) || (overlapProfileId && linked.includes(overlapProfileId));
+}
+
+function applyWeightedContextBoost(areaScores, signal, topProfileId, overlapProfileId) {
   const areaWeights = CONTEXT_SIGNAL_AREA_WEIGHTS[signal.id];
   if (!areaWeights) return;
 
   const multiplier = getContextStrengthMultiplier(signal.strength);
+  const alignmentMultiplier = signalMatchesProfiles(signal, topProfileId, overlapProfileId)
+    ? 1
+    : 0.5;
 
   Object.entries(areaWeights).forEach(([area, weight]) => {
     if (area in areaScores) {
-      areaScores[area] += Math.round(weight * 2 * multiplier);
+      areaScores[area] += Math.round(weight * 1.5 * multiplier * alignmentMultiplier);
     }
   });
 }
@@ -161,11 +217,12 @@ function getPrimaryContextArea(signalId) {
   return Object.entries(weights).sort((left, right) => right[1] - left[1])[0][0];
 }
 
-function getForcedContextAreas(signal) {
+function getForcedContextAreas(signal, topProfileId, overlapProfileId) {
   if (signal.strength !== 3) return [];
+  if (!signalMatchesProfiles(signal, topProfileId, overlapProfileId)) return [];
 
   if (signal.id === 'ctx-small-group-stronger') {
-    return ['Leeromgeving', 'Groepsgenoten'];
+    return ['Leeromgeving'];
   }
 
   const primaryArea = getPrimaryContextArea(signal.id);
@@ -193,7 +250,7 @@ function findRelevantContextSignalForArea(contextSignals, area) {
   })[0];
 }
 
-function buildPrioritizedAreaNames(areaScores, activeContextSignals) {
+function buildPrioritizedAreaNames(areaScores, activeContextSignals, topProfileId, overlapProfileId) {
   const sortedAreas = Object.entries(areaScores)
     .filter(([area]) => area !== 'Thuissituatie / ouders')
     .sort((left, right) => right[1] - left[1])
@@ -202,7 +259,9 @@ function buildPrioritizedAreaNames(areaScores, activeContextSignals) {
   const prioritized = sortedAreas.slice(0, 4);
 
   const forcedAreas = unique(
-    activeContextSignals.flatMap((signal) => getForcedContextAreas(signal))
+    activeContextSignals.flatMap((signal) =>
+      getForcedContextAreas(signal, topProfileId, overlapProfileId)
+    )
   );
 
   forcedAreas.forEach((forcedArea) => {
@@ -219,6 +278,58 @@ function buildPrioritizedAreaNames(areaScores, activeContextSignals) {
   });
 
   return unique(prioritized).slice(0, 4);
+}
+
+function applyStep3Boosts(areaScores, contextInput) {
+  if (
+    contextInput.challengeResponse ===
+    'De leerling laat meer betrokkenheid zien wanneer het werk compact en echt uitdagend is.'
+  ) {
+    areaScores['Leerstof en opdrachten'] += 2;
+    areaScores.Leeractiviteiten += 2;
+  }
+
+  if (
+    contextInput.challengeResponse ===
+    'De leerling laat meer weerstand zien wanneer taken herhalend of te makkelijk zijn.'
+  ) {
+    areaScores['Leerstof en opdrachten'] += 2;
+    areaScores.Leeractiviteiten += 2;
+    areaScores.Instructie += 1;
+  }
+
+  if (
+    contextInput.challengeResponse ===
+    'De leerling laat juist meer stabiliteit zien wanneer taken voorspelbaar en duidelijk begrensd zijn.'
+  ) {
+    areaScores.Instructie += 2;
+    areaScores.Leeromgeving += 2;
+  }
+
+  if (
+    contextInput.settingDifference ===
+    'De leerling laat in een kleiner of veiliger verband meer zien dan in de hele groep.'
+  ) {
+    areaScores.Leeromgeving += 2;
+    areaScores.Feedback += 1;
+  }
+
+  if (
+    contextInput.settingDifference ===
+    'De leerling laat juist in verrijking of bij sterke peers meer initiatief en inhoud zien.'
+  ) {
+    areaScores.Groepsgenoten += 2;
+    areaScores['Leerstof en opdrachten'] += 2;
+    areaScores.Leeractiviteiten += 1;
+  }
+
+  if (
+    contextInput.settingDifference ===
+    'Het zichtbare functioneren verschilt sterk per les, taak of setting.'
+  ) {
+    areaScores.Leerkracht += 2;
+    areaScores.Leeromgeving += 2;
+  }
 }
 
 export default function buildPersonalizedAdvice({
@@ -244,9 +355,19 @@ export default function buildPersonalizedAdvice({
     areaScores[area] += 10 - index;
   });
 
-  if (overlapProfile) {
+  applyAnchorBoosts(areaScores, topProfile.id);
+
+  const overlapDifference = profileBase.topScore - profileBase.secondScore;
+  const overlapIsTight = overlapProfile && overlapDifference <= 2;
+  const overlapIsRelevant = overlapProfile && overlapDifference <= 4;
+
+  if (overlapIsRelevant) {
     PROFILE_PRIORITY_AREAS[overlapProfile.id].forEach((area, index) => {
-      areaScores[area] += 4 - Math.min(index, 3);
+      const contribution = overlapIsTight
+        ? [2, 2, 1, 1, 0][index] ?? 0
+        : [1, 1, 0, 0, 0][index] ?? 0;
+
+      areaScores[area] += contribution;
     });
   }
 
@@ -283,67 +404,22 @@ export default function buildPersonalizedAdvice({
   }
 
   activeContextSignals.forEach((signal) => {
-    applyWeightedContextBoost(areaScores, signal);
+    applyWeightedContextBoost(
+      areaScores,
+      signal,
+      topProfile.id,
+      overlapProfile?.id || null
+    );
   });
 
-  if (
-    contextInput.challengeResponse ===
-    'De leerling laat meer betrokkenheid zien wanneer het werk compact en echt uitdagend is.'
-  ) {
-    areaScores['Leerstof en opdrachten'] += 2;
-    areaScores.Leeractiviteiten += 2;
-  }
-
-  if (
-    contextInput.challengeResponse ===
-    'De leerling laat meer weerstand zien wanneer taken herhalend of te makkelijk zijn.'
-  ) {
-    areaScores['Leerstof en opdrachten'] += 2;
-    areaScores.Leeractiviteiten += 2;
-    areaScores.Instructie += 1;
-  }
-
-  if (
-    contextInput.challengeResponse ===
-    'De leerling laat juist meer stabiliteit zien wanneer taken voorspelbaar en duidelijk begrensd zijn.'
-  ) {
-    areaScores.Instructie += 2;
-    areaScores.Leeromgeving += 2;
-  }
-
-  if (
-    contextInput.settingDifference ===
-    'De leerling laat in een kleiner of veiliger verband meer zien dan in de hele groep.'
-  ) {
-    areaScores.Leeromgeving += 2;
-    areaScores.Groepsgenoten += 2;
-    areaScores.Feedback += 1;
-  }
-
-  if (
-    contextInput.settingDifference ===
-    'De leerling laat juist in verrijking of bij sterke peers meer initiatief en inhoud zien.'
-  ) {
-    areaScores.Groepsgenoten += 2;
-    areaScores['Leerstof en opdrachten'] += 2;
-    areaScores.Leeractiviteiten += 1;
-  }
-
-  if (
-    contextInput.settingDifference ===
-    'Het zichtbare functioneren verschilt sterk per les, taak of setting.'
-  ) {
-    areaScores.Leerkracht += 2;
-    areaScores.Leeromgeving += 2;
-  }
+  applyStep3Boosts(areaScores, contextInput);
 
   const prioritizedAreaNames = buildPrioritizedAreaNames(
     areaScores,
-    activeContextSignals
+    activeContextSignals,
+    topProfile.id,
+    overlapProfile?.id || null
   );
-
-  const overlapIsTight =
-    overlapProfile && profileBase.topScore - profileBase.secondScore <= 2;
 
   const prioritizedNeeds = prioritizedAreaNames.map((area) => {
     const primaryNeed = topNeedMap[area];
