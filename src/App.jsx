@@ -1028,12 +1028,6 @@ function App() {
             <span>{observationProgressPercent}% voltooid</span>
           </div>
         </div>
-
-        <p className="helper-text">
-          Beoordeel hoe zichtbaar dit gedrag of functioneren op dit moment is.
-          Ook ‘0 = niet waargenomen’ is een geldige keuze.
-        </p>
-
         <article className="observation-card">
           <div className="observation-card-head">
             <p>{toDisplay(item.prompt)}</p>
