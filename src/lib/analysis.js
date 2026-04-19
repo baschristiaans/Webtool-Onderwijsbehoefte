@@ -10,14 +10,14 @@ export const PROFILE_IDS = [
 ];
 
 export const PROFILE_DIRECTION_THRESHOLDS = {
-  minimumTopScore: 12,
-  clearDifference: 5,
-  cautiousDifference: 2
+  minimumTopScore: 6,
+  clearDifference: 2,
+  cautiousDifference: 1
 };
 
 const CATEGORY_POINTS = {
-  core: [0, 2, 4, 6],
-  supporting: [0, 1, 2, 3]
+  core: [0, 1, 2, 3],
+  supporting: [0, 1, 1, 2]
 };
 
 const TEST_LEVEL_MAP = {
@@ -117,8 +117,8 @@ function applyContraIndicators(scoresByProfile, observationAnswers) {
   ).length;
 
   if (strongType6Count >= 2) {
-    scoresByProfile.type1 = Math.max(0, scoresByProfile.type1 - 2);
-    scoresByProfile.type4 = Math.max(0, scoresByProfile.type4 - 2);
+    scoresByProfile.type1 = Math.max(0, scoresByProfile.type1 - 1);
+    scoresByProfile.type4 = Math.max(0, scoresByProfile.type4 - 1);
   }
 
   const strongType1Items = ['obs-seeks-confirmation', 'obs-safe-approach'];
@@ -127,7 +127,7 @@ function applyContraIndicators(scoresByProfile, observationAnswers) {
   ).length;
 
   if (strongType1Count >= 2) {
-    scoresByProfile.type6 = Math.max(0, scoresByProfile.type6 - 2);
+    scoresByProfile.type6 = Math.max(0, scoresByProfile.type6 - 1);
   }
 }
 
@@ -169,11 +169,11 @@ function applyEligibilityAdjustments(scoresByProfile, evidenceFlags) {
   const status = validateProfileEligibility('type5', evidenceFlags).status;
 
   if (status === 'insufficient') {
-    scoresByProfile.type5 = Math.max(0, scoresByProfile.type5 - 6);
+    scoresByProfile.type5 = Math.max(0, scoresByProfile.type5 - 2);
   }
 
   if (status === 'cautious') {
-    scoresByProfile.type5 = Math.max(0, scoresByProfile.type5 - 3);
+    scoresByProfile.type5 = Math.max(0, scoresByProfile.type5 - 1);
   }
 }
 

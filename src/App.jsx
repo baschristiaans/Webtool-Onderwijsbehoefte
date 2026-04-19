@@ -33,10 +33,6 @@ const SETTING_OPTIONS = [
     label: 'Laat in klein of veilig verband meer zien'
   },
   {
-    value: 'De leerling laat juist in verrijking of bij sterke peers meer initiatief en inhoud zien.',
-    label: 'Laat bij verrijking of sterke peers meer zien'
-  },
-  {
     value: 'Het zichtbare functioneren verschilt sterk per les, taak of setting.',
     label: 'Functioneren verschilt sterk per setting'
   }
@@ -489,7 +485,7 @@ function App() {
         `
       )
       .join('');
-        const html = `
+          const html = `
       <html>
         <head>
           <title>Printbaar observatieformulier</title>
@@ -722,7 +718,7 @@ function App() {
       </article>
     );
   }
-      function renderTestsStep() {
+    function renderTestsStep() {
     return (
       <article className="panel">
         <div className="panel-head">

@@ -33,15 +33,6 @@ const observationItems = [
     category: 'supporting',
     profileIds: ['type1']
   },
-  {
-    id: 'obs-careful-meets-expectations',
-    domain: 'task-approach',
-    domainLabel: 'Taakaanpak en leerhouding',
-    prompt:
-      'De leerling werkt zichtbaar zorgvuldig en volgens de gegeven verwachtingen.',
-    category: 'supporting',
-    profileIds: ['type1']
-  },
 
   {
     id: 'obs-reacts-to-unfairness',
@@ -71,39 +62,12 @@ const observationItems = [
     profileIds: ['type2']
   },
   {
-    id: 'obs-direct-when-illogical',
-    domain: 'response-challenge',
-    domainLabel: 'Reactie op aanbod en uitdaging',
-    prompt:
-      'De leerling reageert snel en uitgesproken wanneer een taak of regel onlogisch voelt.',
-    category: 'core',
-    profileIds: ['type2']
-  },
-  {
     id: 'obs-discussion-overtakes-task',
     domain: 'response-challenge',
     domainLabel: 'Reactie op aanbod en uitdaging',
     prompt:
       'De leerling raakt gemakkelijk in discussie over de opdracht, waardoor de taak soms naar de achtergrond schuift.',
     category: 'core',
-    profileIds: ['type2']
-  },
-  {
-    id: 'obs-avoids-visible-enrichment',
-    domain: 'response-challenge',
-    domainLabel: 'Reactie op aanbod en uitdaging',
-    prompt:
-      'De leerling wijst verrijking of extra uitdaging af wanneer dit hem of haar zichtbaar onderscheidt van de groep.',
-    category: 'core',
-    profileIds: ['type3']
-  },
-  {
-    id: 'obs-own-original-approach',
-    domain: 'response-challenge',
-    domainLabel: 'Reactie op aanbod en uitdaging',
-    prompt:
-      'De leerling zoekt actief naar een eigen of originele aanpak binnen de opdracht.',
-    category: 'supporting',
     profileIds: ['type2']
   },
 
@@ -113,15 +77,6 @@ const observationItems = [
     domainLabel: 'Sociale zichtbaarheid en afstemming',
     prompt:
       'De leerling houdt sterke antwoorden of inzichten geregeld op de achtergrond, waardoor het functioneren minder opvallend overkomt.',
-    category: 'core',
-    profileIds: ['type3']
-  },
-  {
-    id: 'obs-belonging-over-performing',
-    domain: 'social-visibility',
-    domainLabel: 'Sociale zichtbaarheid en afstemming',
-    prompt:
-      'De leerling lijkt sociaal erbij horen belangrijker te vinden dan zichtbaar sterk presteren.',
     category: 'core',
     profileIds: ['type3']
   },
@@ -246,15 +201,6 @@ const observationItems = [
     profileIds: ['type6']
   },
   {
-    id: 'obs-starts-independently',
-    domain: 'self-direction',
-    domainLabel: 'Zelfsturing en ambitie',
-    prompt:
-      'De leerling gaat zelfstandig aan het werk zonder eerst bevestiging te zoeken.',
-    category: 'supporting',
-    profileIds: ['type6']
-  },
-  {
     id: 'obs-uses-errors-for-learning',
     domain: 'self-direction',
     domainLabel: 'Zelfsturing en ambitie',
@@ -283,15 +229,6 @@ const observationItems = [
     profileIds: ['type3', 'type5']
   },
   {
-    id: 'ctx-opens-up-with-choice',
-    domain: 'school-context',
-    domainLabel: 'Contextsignalen in school',
-    prompt:
-      'De leerling laat meer initiatief, diepgang of betrokkenheid zien wanneer er keuzevrijheid is.',
-    category: 'context',
-    profileIds: ['type2', 'type4', 'type6']
-  },
-  {
     id: 'ctx-peer-match-helps',
     domain: 'school-context',
     domainLabel: 'Contextsignalen in school',
@@ -299,15 +236,6 @@ const observationItems = [
       'De leerling functioneert sterker wanneer hij of zij samenwerkt met cognitief of inhoudelijk passende peers.',
     category: 'context',
     profileIds: ['type3', 'type6']
-  },
-  {
-    id: 'ctx-drops-with-repetition',
-    domain: 'school-context',
-    domainLabel: 'Contextsignalen in school',
-    prompt:
-      'De leerling zakt zichtbaar weg bij herhaling of te makkelijke taken.',
-    category: 'context',
-    profileIds: ['type2', 'type4']
   },
   {
     id: 'ctx-oral-written-gap',
