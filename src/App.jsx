@@ -248,7 +248,7 @@ function buildExportText({
     'Notities',
     notes || '-',
     '',
-    'Kanttekening',
+        'Kanttekening',
     advice.caution,
     'Dit is geen diagnose.',
     'Context, dossierinformatie, thuissituatie, ZOOV+ en toetsgegevens tellen niet mee in de ruwe profielscore.'
@@ -498,7 +498,7 @@ function App() {
               line-height: 1.4;
               font-size: 14px;
             }
-            h1 { font-size: 24px; margin: 0 0 6px 0; }
+                h1 { font-size: 24px; margin: 0 0 6px 0; }
             .subtitle { margin: 0 0 20px 0; color: #526274; }
             .meta {
               margin-bottom: 24px;
@@ -718,6 +718,7 @@ function App() {
       </article>
     );
   }
+
     function renderTestsStep() {
     return (
       <article className="panel">
@@ -748,7 +749,7 @@ function App() {
                   </option>
                 ))}
               </select>
-            </label>
+                         </label>
           ))}
         </div>
       </article>
@@ -993,17 +994,16 @@ function App() {
       </article>
     );
   }
-
   function renderResultsStep() {
     return (
       <div className="output-column">
         <article className="panel result-panel">
-          <div className="panel-head">
+                       <div className="panel-head">
             <div>
               <p className="section-label">Profielbeeld</p>
-              <h2>{formatProfileHeading(bestProfile)}</h2>
+              <h2>{advice.resultHeading}</h2>
               <p className="helper-text">
-                {profileBase.profileStatusById[bestProfile.id]?.label}
+                {advice.resultLabel} · {profileBase.profileStatusById[bestProfile.id]?.label}
               </p>
             </div>
             <button
@@ -1135,7 +1135,6 @@ function App() {
       </div>
     );
   }
-
   function renderCurrentStep() {
     if (currentStepConfig.key === 'student') return renderStudentStep();
     if (currentStepConfig.key === 'tests') return renderTestsStep();
@@ -1225,8 +1224,7 @@ function App() {
                   </span>
                 )}
               </div>
-
-              <button
+                  <button
                 type="button"
                 className="primary-button"
                 onClick={handleNext}
@@ -1307,4 +1305,4 @@ function App() {
   );
 }
 
-export default App;
+export default App;                  

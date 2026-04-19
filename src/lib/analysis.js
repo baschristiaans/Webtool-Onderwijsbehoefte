@@ -69,26 +69,37 @@ function createEmptyProfileMap(initialValueFactory) {
   );
 }
 
-function resolveDirectionLabel(topScore, secondScore, topStatus) {
-  if (topStatus === 'insufficient') {
-    return 'nog onvoldoende richting';
+function resolveDirectionLabel({
+  topScore,
+  secondScore,
+  topStatus,
+  hasMeaningfulOverlap,
+  hasLimitedInput
+}) {
+  if (hasMeaningfulOverlap) {
+    return hasLimitedInput
+      ? 'voorlopige overlappende profielrichting'
+      : 'overlappende profielrichting';
   }
 
-  if (topScore < PROFILE_DIRECTION_THRESHOLDS.minimumTopScore) {
-    return 'nog onvoldoende richting';
+  if (topStatus === 'insufficient' && topScore <= 0) {
+    return 'beperkte invoer';
+  }
+
+  if (topScore <= 0) {
+    return 'beperkte invoer';
   }
 
   const difference = topScore - secondScore;
 
-  if (difference >= PROFILE_DIRECTION_THRESHOLDS.clearDifference) {
+  if (
+    topScore >= PROFILE_DIRECTION_THRESHOLDS.minimumTopScore &&
+    difference >= PROFILE_DIRECTION_THRESHOLDS.clearDifference
+  ) {
     return 'relatief duidelijke profielrichting';
   }
 
-  if (difference >= PROFILE_DIRECTION_THRESHOLDS.cautiousDifference) {
-    return 'voorzichtige profielrichting';
-  }
-
-  return 'meerdere profielen liggen dicht bij elkaar';
+  return 'voorzichtige profielrichting';
 }
 
 function describeStrength(answerValue) {
@@ -201,6 +212,31 @@ function buildEvidenceQuality(topProfile, secondProfile) {
   return 'low';
 }
 
+function buildStrongestObservations(topProfile, secondProfile, includeOverlap) {
+  const sourceItems = includeOverlap
+    ? [...topProfile.evidence, ...(secondProfile?.evidence || [])]
+    : [...topProfile.evidence];
+
+  const uniqueById = new Map();
+    sourceItems.forEach((item) => {
+    const existing = uniqueById.get(item.id);
+
+    if (!existing || item.scoreContribution > existing.scoreContribution) {
+      uniqueById.set(item.id, item);
+    }
+  });
+
+  return [...uniqueById.values()]
+    .sort((left, right) => {
+      if (right.scoreContribution !== left.scoreContribution) {
+        return right.scoreContribution - left.scoreContribution;
+      }
+
+      return right.strength - left.strength;
+    })
+    .slice(0, 5);
+}
+
 export function analyzeProfileBase(observationAnswers, contextInput = {}) {
   const rawScoresByProfile = createEmptyProfileMap(() => 0);
   const scoresByProfile = createEmptyProfileMap(() => 0);
@@ -208,6 +244,14 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
   const scoreItems = observationItems.filter((item) => item.category !== 'context');
   const contextSignals = [];
   const evidenceFlags = createEvidenceFlags();
+
+  const answeredObservationCount = observationItems.filter(
+    (item) => observationAnswers[item.id] !== null && observationAnswers[item.id] !== undefined
+  ).length;
+
+  const positiveObservationCount = observationItems.filter(
+    (item) => Number(observationAnswers[item.id] ?? 0) > 0
+  ).length;
 
   if (contextInput.knownSupportInfoPresence === 'yes') {
     evidenceFlags.type5.hasKnownSupportInfoContext = true;
@@ -291,12 +335,24 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
 
   const topProfile = sortedProfiles[0];
   const secondProfile = sortedProfiles[1];
-  const evidenceQuality = buildEvidenceQuality(topProfile, secondProfile);
   const overlapDifference = topProfile.score - secondProfile.score;
+  const hasLimitedInput =
+    answeredObservationCount < 4 ||
+    positiveObservationCount < 2 ||
+    topProfile.score < 3;
+
   const hasMeaningfulOverlap =
     topProfile.score > 0 &&
     secondProfile.score > 0 &&
+    secondProfile.status.status !== 'insufficient' &&
     overlapDifference <= PROFILE_DIRECTION_THRESHOLDS.clearDifference;
+
+  const evidenceQuality = buildEvidenceQuality(topProfile, secondProfile);
+  const strongestObservations = buildStrongestObservations(
+    topProfile,
+    secondProfile,
+    hasMeaningfulOverlap
+  );
 
   return {
     scoreItems,
@@ -305,23 +361,28 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     sortedProfiles,
     profileStatusById,
     evidenceFlags,
+    answeredObservationCount,
+    positiveObservationCount,
+    hasLimitedInput,
+    hasMeaningfulOverlap,
     topProfileId: topProfile.profileId,
     overlapProfileId: hasMeaningfulOverlap ? secondProfile.profileId : null,
-    profileDirectionLabel: resolveDirectionLabel(
-      topProfile.score,
-      secondProfile.score,
-      topProfile.status.status
-    ),
+    profileDirectionLabel: resolveDirectionLabel({
+      topScore: topProfile.score,
+      secondScore: secondProfile.score,
+      topStatus: topProfile.status.status,
+      hasMeaningfulOverlap,
+      hasLimitedInput
+    }),
     topScore: topProfile.score,
     secondScore: secondProfile.score,
     contextSignals,
-    strongestObservations: topProfile.evidence.slice(0, 5),
+    strongestObservations,
     evidenceQuality,
     overlapDifference
   };
 }
-
-function buildTestEvidenceEntries(testScores) {
+function buildTestEvidenceEntriesfunction (testScores) {
   return Object.entries(testScores)
     .map(([key, value]) => ({
       key,
@@ -375,7 +436,7 @@ export function analyzeRichInterpretation({
   }
 
   if (contextInput.knownSupportInfoPresence === 'yes') {
-    interpretationSignals.push({
+        interpretationSignals.push({
       id: 'known-support-info',
       prompt:
         contextInput.knownSupportInfoNote?.trim()
@@ -474,9 +535,9 @@ export function analyzeRichInterpretation({
     );
   }
 
-  if (profileBase.profileDirectionLabel === 'nog onvoldoende richting') {
+  if (profileBase.hasLimitedInput) {
     interpretationSummaryParts.push(
-      'De huidige invoer is nog te beperkt of te verdeeld om een stevige profielrichting aan te wijzen.'
+      'De huidige invoer is nog beperkt. Lees de uitkomst daarom als voorlopige werkhypothese.'
     );
   }
 
