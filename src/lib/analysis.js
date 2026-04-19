@@ -88,9 +88,9 @@ function resolveDirectionLabel(topScore, secondScore) {
 }
 
 function describeStrength(answerValue) {
-  if (answerValue === 3) return 'sterk zichtbaar';
-  if (answerValue === 2) return 'duidelijk zichtbaar';
-  if (answerValue === 1) return 'licht zichtbaar';
+  if (answerValue === 3) return 'duidelijk en consistent zichtbaar';
+  if (answerValue === 2) return 'regelmatig zichtbaar';
+  if (answerValue === 1) return 'soms zichtbaar';
   return 'niet waargenomen';
 }
 

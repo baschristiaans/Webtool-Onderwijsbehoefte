@@ -145,9 +145,10 @@ function formatProfileHeading(profile) {
 }
 
 function formatStrength(strength) {
-  if (strength === 3) return 'sterk zichtbaar';
-  if (strength === 2) return 'duidelijk zichtbaar';
-  return 'licht zichtbaar';
+  if (strength === 3) return 'duidelijk en consistent zichtbaar';
+  if (strength === 2) return 'regelmatig zichtbaar';
+  if (strength === 1) return 'soms zichtbaar';
+  return 'niet waargenomen';
 }
 
 function buildExportText({
@@ -259,7 +260,6 @@ function buildExportText({
 
   return lines.join('\n');
 }
-
 function App() {
   const profilesById = useMemo(buildProfilesById, []);
 
@@ -477,9 +477,9 @@ function App() {
                     <div class="question-text">${toDisplay(item.prompt)}</div>
                     <div class="question-options">
                       <label><input type="checkbox" /> Niet waargenomen</label>
-                      <label><input type="checkbox" /> Licht zichtbaar</label>
-                      <label><input type="checkbox" /> Duidelijk zichtbaar</label>
-                      <label><input type="checkbox" /> Sterk zichtbaar</label>
+                      <label><input type="checkbox" /> Soms zichtbaar</label>
+                      <label><input type="checkbox" /> Regelmatig zichtbaar</label>
+                      <label><input type="checkbox" /> Duidelijk en consistent zichtbaar</label>
                     </div>
                   </div>
                 `
@@ -489,8 +489,7 @@ function App() {
         `
       )
       .join('');
-
-    const html = `
+        const html = `
       <html>
         <head>
           <title>Printbaar observatieformulier</title>
@@ -723,8 +722,7 @@ function App() {
       </article>
     );
   }
-
-  function renderTestsStep() {
+      function renderTestsStep() {
     return (
       <article className="panel">
         <div className="panel-head">

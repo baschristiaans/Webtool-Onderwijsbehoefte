@@ -1,503 +1,475 @@
-import { normalizeText } from './analysis';
+import observationItems from '../data/observationItems';
 
-const PROFILE_PRIORITY_AREAS = {
-  type1: [
-    'Leerstof en opdrachten',
-    'Feedback',
-    'Leerkracht',
-    'Instructie',
-    'Leeractiviteiten'
-  ],
-  type2: [
-    'Leerkracht',
-    'Leerstof en opdrachten',
-    'Feedback',
-    'Leeromgeving',
-    'Leeractiviteiten'
-  ],
-  type3: [
-    'Leeromgeving',
-    'Feedback',
-    'Leeractiviteiten',
-    'Leerkracht',
-    'Groepsgenoten'
-  ],
-  type4: [
-    'Leerkracht',
-    'Leeromgeving',
-    'Leerstof en opdrachten',
-    'Feedback',
-    'Leeractiviteiten'
-  ],
-  type5: [
-    'Instructie',
-    'Leerstof en opdrachten',
-    'Leeractiviteiten',
-    'Feedback',
-    'Leerkracht'
-  ],
-  type6: [
-    'Leerstof en opdrachten',
-    'Leeractiviteiten',
-    'Feedback',
-    'Leerkracht',
-    'Instructie'
-  ]
+export const PROFILE_IDS = [
+  'type1',
+  'type2',
+  'type3',
+  'type4',
+  'type5',
+  'type6'
+];
+
+export const PROFILE_DIRECTION_THRESHOLDS = {
+  minimumTopScore: 12,
+  clearDifference: 5,
+  cautiousDifference: 2
 };
 
-const PROFILE_ANCHOR_BOOSTS = {
-  type1: {
-    'Leerstof en opdrachten': 2,
-    Feedback: 2,
-    Leerkracht: 1
-  },
-  type2: {
-    Leerkracht: 3,
-    'Leerstof en opdrachten': 3,
-    Feedback: 2,
-    Leeractiviteiten: 1
-  },
-  type3: {
-    Leeromgeving: 3,
-    Feedback: 2,
-    Groepsgenoten: 2,
-    Leerkracht: 1
-  },
-  type4: {
-    Leerkracht: 3,
-    Leeromgeving: 3,
-    'Leerstof en opdrachten': 2,
-    Feedback: 1
-  },
-  type5: {
-    Instructie: 4,
-    'Leerstof en opdrachten': 4,
-    Leeractiviteiten: 3,
-    Feedback: 2,
-    Leerkracht: 1
-  },
-  type6: {
-    'Leerstof en opdrachten': 3,
-    Leeractiviteiten: 3,
-    Feedback: 2,
-    Leerkracht: 1
-  }
+const CATEGORY_POINTS = {
+  core: [0, 2, 4, 6],
+  supporting: [0, 1, 2, 3]
 };
 
-const AREA_BOOSTS = {
-  underachievement: ['Leerkracht', 'Leeromgeving', 'Leerstof en opdrachten'],
-  twiceExceptional: ['Instructie', 'Leerstof en opdrachten', 'Leeractiviteiten', 'Feedback'],
-  socialVisibility: ['Leeromgeving', 'Feedback', 'Groepsgenoten'],
-  selfDirection: ['Leerstof en opdrachten', 'Leeractiviteiten', 'Leerkracht']
+const TEST_LEVEL_MAP = {
+  unknown: null,
+  veryStrong: 4,
+  strong: 3,
+  average: 2,
+  vulnerable: 1,
+  weak: 0
 };
 
-const CONTEXT_SIGNAL_AREA_WEIGHTS = {
-  'ctx-small-group-stronger': {
-    Leeromgeving: 4,
-    Feedback: 2
-  },
-  'ctx-opens-up-with-choice': {
-    Leeractiviteiten: 3,
-    'Leerstof en opdrachten': 2,
-    Instructie: 1
-  },
-  'ctx-peer-match-helps': {
-    Groepsgenoten: 1
-  },
-  'ctx-drops-with-repetition': {
-    'Leerstof en opdrachten': 3,
-    Leeractiviteiten: 2,
-    Instructie: 1
-  },
-  'ctx-oral-written-gap': {
-    Instructie: 3,
-    Leeractiviteiten: 2,
-    Feedback: 2
-  }
-};
+export function normalizeText(text) {
+  if (typeof text !== 'string') return text;
 
-const CONTEXT_SIGNAL_REASON_TEXT = {
-  'ctx-small-group-stronger':
-    'De leerling laat in een kleinere of veiligere setting meer zien.',
-  'ctx-opens-up-with-choice':
-    'De leerling toont meer betrokkenheid wanneer er keuzevrijheid is.',
-  'ctx-peer-match-helps':
-    'De leerling functioneert sterker bij cognitief of inhoudelijk passende peers.',
-  'ctx-drops-with-repetition':
-    'De leerling zakt zichtbaar weg bij herhalende of te makkelijke taken.',
-  'ctx-oral-written-gap':
-    'De leerling laat in gesprek meer zien dan in schriftelijk werk.'
-};
-
-function unique(items) {
-  return [...new Set(items)];
+  return text
+    .replaceAll('ÃƒÆ’Ã‚Â«', 'ë')
+    .replaceAll('ÃƒÆ’Ã‚Â©', 'é')
+    .replaceAll('ÃƒÆ’Ã‚Â¯', 'ï')
+    .replaceAll('ÃƒÆ’Ã‚Â¼', 'ü')
+    .replaceAll('ÃƒÆ’Ã‚Â¶', 'ö')
+    .replaceAll('ÃƒÆ’Ã‚Â¡', 'á')
+    .replaceAll('ÃƒÆ’Ã‚Â¨', 'è')
+    .replaceAll('ÃƒÆ’', 'à')
+    .replaceAll('ÃƒÂ«', 'ë')
+    .replaceAll('ÃƒÂ©', 'é')
+    .replaceAll('ÃƒÂ¯', 'ï')
+    .replaceAll('ÃƒÂ¼', 'ü')
+    .replaceAll('ÃƒÂ¶', 'ö')
+    .replaceAll('ÃƒÂ¡', 'á')
+    .replaceAll('ÃƒÂ¨', 'è')
+    .replaceAll('Ã«', 'ë')
+    .replaceAll('Ã©', 'é')
+    .replaceAll('Ã¯', 'ï')
+    .replaceAll('Ã¼', 'ü')
+    .replaceAll('Ã¶', 'ö')
+    .replaceAll('Ã¡', 'á')
+    .replaceAll('Ã¨', 'è')
+    .replaceAll('Ã³', 'ó')
+    .replaceAll('â€™', "'")
+    .replaceAll('â€“', '–')
+    .replaceAll('â€”', '—')
+    .replaceAll('â€œ', '"')
+    .replaceAll('â€', '"');
 }
 
-function getNeedMap(profile) {
-  return Object.fromEntries(profile.needs.map((need) => [need.area, need]));
+function createEmptyProfileMap(initialValueFactory) {
+  return Object.fromEntries(
+    PROFILE_IDS.map((profileId) => [profileId, initialValueFactory(profileId)])
+  );
 }
 
-function createAreaScoreMap() {
+function resolveDirectionLabel(topScore, secondScore) {
+  if (topScore < PROFILE_DIRECTION_THRESHOLDS.minimumTopScore) {
+    return 'nog onvoldoende richting';
+  }
+
+  const difference = topScore - secondScore;
+
+  if (difference >= PROFILE_DIRECTION_THRESHOLDS.clearDifference) {
+    return 'relatief duidelijke profielrichting';
+  }
+
+  if (difference >= PROFILE_DIRECTION_THRESHOLDS.cautiousDifference) {
+    return 'voorzichtige profielrichting';
+  }
+
+  return 'meerdere profielen liggen dicht bij elkaar';
+}
+
+function describeStrength(answerValue) {
+  if (answerValue === 3) return 'duidelijk en consistent zichtbaar';
+  if (answerValue === 2) return 'regelmatig zichtbaar';
+  if (answerValue === 1) return 'soms zichtbaar';
+  return 'niet waargenomen';
+}
+
+function createEvidenceFlags() {
   return {
-    Instructie: 0,
-    'Leerstof en opdrachten': 0,
-    Leeractiviteiten: 0,
-    Feedback: 0,
-    Leeromgeving: 0,
-    Groepsgenoten: 0,
-    Leerkracht: 0,
-    'Thuissituatie / ouders': 0
+    type5: {
+      hasStrengthIndicator: false,
+      hasExecutionMismatchIndicator: false,
+      hasKnownSupportInfoContext: false
+    }
   };
 }
 
-function boostAreas(areaScores, areas, amount) {
-  areas.forEach((area) => {
-    if (area in areaScores) {
-      areaScores[area] += amount;
-    }
-  });
-}
+function applyContraIndicators(scoresByProfile, observationAnswers) {
+  const strongType6Items = [
+    'obs-seeks-extra-challenge',
+    'obs-sets-goals',
+    'obs-uses-errors-for-learning',
+    'obs-sustains-challenging-task'
+  ];
 
-function applyAnchorBoosts(areaScores, profileId) {
-  const boosts = PROFILE_ANCHOR_BOOSTS[profileId] || {};
-  Object.entries(boosts).forEach(([area, amount]) => {
-    if (area in areaScores) {
-      areaScores[area] += amount;
-    }
-  });
-}
+  const strongType6Count = strongType6Items.filter(
+    (id) => Number(observationAnswers[id] ?? 0) >= 2
+  ).length;
 
-function getContextStrengthMultiplier(strength) {
-  if (strength === 3) return 1;
-  if (strength === 2) return 0.75;
-  return 0.5;
-}
-
-function signalMatchesProfiles(signal, topProfileId, overlapProfileId) {
-  const linked = signal.linkedProfiles || [];
-  return linked.includes(topProfileId) || (overlapProfileId && linked.includes(overlapProfileId));
-}
-
-function applyWeightedContextBoost(areaScores, signal, topProfileId, overlapProfileId) {
-  const areaWeights = CONTEXT_SIGNAL_AREA_WEIGHTS[signal.id];
-  if (!areaWeights) return;
-
-  const multiplier = getContextStrengthMultiplier(signal.strength);
-  const alignmentMultiplier = signalMatchesProfiles(signal, topProfileId, overlapProfileId)
-    ? 1
-    : 0.5;
-
-  Object.entries(areaWeights).forEach(([area, weight]) => {
-    if (area in areaScores) {
-      areaScores[area] += Math.round(weight * multiplier * alignmentMultiplier);
-    }
-  });
-}
-
-function getPrimaryContextArea(signalId) {
-  const weights = CONTEXT_SIGNAL_AREA_WEIGHTS[signalId];
-  if (!weights) return null;
-
-  return Object.entries(weights).sort((left, right) => right[1] - left[1])[0][0];
-}
-
-function getForcedContextAreas(signal, topProfileId, overlapProfileId) {
-  if (signal.strength !== 3) return [];
-  if (!signalMatchesProfiles(signal, topProfileId, overlapProfileId)) return [];
-
-  if (signal.id === 'ctx-small-group-stronger') {
-    return topProfileId === 'type3' ? ['Leeromgeving'] : [];
+  if (strongType6Count >= 2) {
+    scoresByProfile.type1 = Math.max(0, scoresByProfile.type1 - 2);
+    scoresByProfile.type4 = Math.max(0, scoresByProfile.type4 - 2);
   }
 
-  if (signal.id === 'ctx-peer-match-helps') {
-    return [];
+  const strongType1Items = ['obs-seeks-confirmation', 'obs-safe-approach'];
+  const strongType1Count = strongType1Items.filter(
+    (id) => Number(observationAnswers[id] ?? 0) >= 2
+  ).length;
+
+  if (strongType1Count >= 2) {
+    scoresByProfile.type6 = Math.max(0, scoresByProfile.type6 - 2);
+  }
+}
+
+function validateProfileEligibility(profileId, evidenceFlags) {
+  if (profileId !== 'type5') {
+    return {
+      status: 'regular',
+      label: 'reguliere profielrichting'
+    };
   }
 
-  const primaryArea = getPrimaryContextArea(signal.id);
-  return primaryArea ? [primaryArea] : [];
-}
-
-function findRelevantContextSignalForArea(contextSignals, area) {
-  const matchingSignals = contextSignals.filter((signal) =>
-    Object.prototype.hasOwnProperty.call(
-      CONTEXT_SIGNAL_AREA_WEIGHTS[signal.id] || {},
-      area
-    )
-  );
-
-  if (matchingSignals.length === 0) return null;
-
-  return matchingSignals.sort((left, right) => {
-    const leftWeight =
-      (CONTEXT_SIGNAL_AREA_WEIGHTS[left.id] || {})[area] || 0;
-    const rightWeight =
-      (CONTEXT_SIGNAL_AREA_WEIGHTS[right.id] || {})[area] || 0;
-
-    if (rightWeight !== leftWeight) return rightWeight - leftWeight;
-    return right.strength - left.strength;
-  })[0];
-}
-
-function buildPrioritizedAreaNames(areaScores, activeContextSignals, topProfileId, overlapProfileId) {
-  const sortedAreas = Object.entries(areaScores)
-    .filter(([area]) => area !== 'Thuissituatie / ouders')
-    .sort((left, right) => right[1] - left[1])
-    .map(([area]) => area);
-
-  const prioritized = sortedAreas.slice(0, 4);
-
-  const forcedAreas = unique(
-    activeContextSignals.flatMap((signal) =>
-      getForcedContextAreas(signal, topProfileId, overlapProfileId)
-    )
-  );
-
-  forcedAreas.forEach((forcedArea) => {
-    if (prioritized.includes(forcedArea)) return;
-
-    const replaceIndex = prioritized
-      .map((area, index) => ({ area, index, score: areaScores[area] }))
-      .sort((left, right) => left.score - right.score)
-      .find((item) => !forcedAreas.includes(item.area))?.index;
-
-    if (replaceIndex !== undefined) {
-      prioritized[replaceIndex] = forcedArea;
-    }
-  });
-
-  return unique(prioritized).slice(0, 4);
-}
-
-function applyStep3Boosts(areaScores, contextInput) {
-  if (
-    contextInput.settingDifference ===
-    'De leerling laat in een kleiner of veiliger verband meer zien dan in de hele groep.'
-  ) {
-    areaScores.Leeromgeving += 2;
-    areaScores.Feedback += 1;
-  }
+  const flags = evidenceFlags.type5;
 
   if (
-    contextInput.settingDifference ===
-    'De leerling laat juist in verrijking of bij sterke peers meer initiatief en inhoud zien.'
+    flags.hasStrengthIndicator &&
+    flags.hasExecutionMismatchIndicator &&
+    flags.hasKnownSupportInfoContext
   ) {
-    areaScores['Leerstof en opdrachten'] += 2;
-    areaScores.Leeractiviteiten += 1;
-    areaScores.Feedback += 1;
+    return {
+      status: 'regular',
+      label: 'reguliere profielrichting'
+    };
   }
 
-  if (
-    contextInput.settingDifference ===
-    'Het zichtbare functioneren verschilt sterk per les, taak of setting.'
-  ) {
-    areaScores.Leerkracht += 2;
-    areaScores.Leeromgeving += 2;
+  if (flags.hasStrengthIndicator && flags.hasExecutionMismatchIndicator) {
+    return {
+      status: 'cautious',
+      label: 'voorzichtig: alleen als signaleringsrichting lezen'
+    };
+  }
+
+  return {
+    status: 'insufficient',
+    label: 'onvoldoende onderbouwd als profielrichting'
+  };
+}
+
+function applyEligibilityAdjustments(scoresByProfile, evidenceFlags) {
+  const status = validateProfileEligibility('type5', evidenceFlags).status;
+
+  if (status === 'insufficient') {
+    scoresByProfile.type5 = Math.max(0, scoresByProfile.type5 - 6);
+  }
+
+  if (status === 'cautious') {
+    scoresByProfile.type5 = Math.max(0, scoresByProfile.type5 - 3);
   }
 }
 
-function applyProfileAreaGuards(areaScores, topProfileId) {
-  if (topProfileId === 'type2') {
-    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 3);
-    areaScores.Feedback += 1;
+export function analyzeProfileBase(observationAnswers, contextInput = {}) {
+  const rawScoresByProfile = createEmptyProfileMap(() => 0);
+  const scoresByProfile = createEmptyProfileMap(() => 0);
+  const supportingObservationsByProfile = createEmptyProfileMap(() => []);
+  const scoreItems = observationItems.filter((item) => item.category !== 'context');
+  const contextSignals = [];
+  const evidenceFlags = createEvidenceFlags();
+
+  if (contextInput.knownSupportInfoPresence === 'yes') {
+    evidenceFlags.type5.hasKnownSupportInfoContext = true;
   }
 
-  if (topProfileId === 'type5') {
-    areaScores.Leeromgeving = Math.max(0, areaScores.Leeromgeving - 4);
-    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 4);
-    areaScores.Instructie += 1;
-    areaScores['Leerstof en opdrachten'] += 2;
-    areaScores.Feedback += 1;
-  }
+  observationItems.forEach((item) => {
+    const answerValue = Number(observationAnswers[item.id] ?? 0);
+    if (answerValue <= 0) return;
 
-  if (topProfileId === 'type6') {
-    areaScores.Groepsgenoten = Math.max(0, areaScores.Groepsgenoten - 3);
-    areaScores.Feedback += 1;
-  }
-}
+    if (item.category === 'context') {
+      contextSignals.push({
+        id: item.id,
+        prompt: normalizeText(item.prompt),
+        strength: answerValue,
+        linkedProfiles: item.profileIds
+      });
 
-export default function buildPersonalizedAdvice({
-  profileBase,
-  interpretation,
-  profilesById,
-  contextInput,
-  homeInput
-}) {
-  const topProfile = profilesById[profileBase.topProfileId];
-  const overlapProfile = profileBase.overlapProfileId
-    ? profilesById[profileBase.overlapProfileId]
-    : null;
-  const topNeedMap = getNeedMap(topProfile);
-  const overlapNeedMap = overlapProfile ? getNeedMap(overlapProfile) : {};
-  const areaScores = createAreaScoreMap();
+      if (item.id === 'ctx-oral-written-gap') {
+        evidenceFlags.type5.hasExecutionMismatchIndicator = true;
+      }
 
-  const activeContextSignals = profileBase.contextSignals.filter(
-    (signal) => signal.id in CONTEXT_SIGNAL_AREA_WEIGHTS
-  );
-
-  PROFILE_PRIORITY_AREAS[topProfile.id].forEach((area, index) => {
-    areaScores[area] += 10 - index;
-  });
-
-  applyAnchorBoosts(areaScores, topProfile.id);
-
-  const overlapDifference = profileBase.topScore - profileBase.secondScore;
-  const overlapIsTight = overlapProfile && overlapDifference <= 2;
-  const overlapIsRelevant = overlapProfile && overlapDifference <= 4;
-
-  if (overlapIsRelevant) {
-    PROFILE_PRIORITY_AREAS[overlapProfile.id].forEach((area, index) => {
-      const contribution = overlapIsTight
-        ? [2, 2, 1, 1, 0][index] ?? 0
-        : [1, 1, 0, 0, 0][index] ?? 0;
-
-      areaScores[area] += contribution;
-    });
-  }
-
-  if (
-    interpretation.discrepancySignals.some((signal) =>
-      signal.toLowerCase().includes('onderprestatie')
-    )
-  ) {
-    boostAreas(areaScores, AREA_BOOSTS.underachievement, 4);
-  }
-
-  if (
-    interpretation.discrepancySignals.some((signal) =>
-      signal.toLowerCase().includes('sterke kanten en bekende ondersteuningsinformatie')
-    )
-  ) {
-    boostAreas(areaScores, AREA_BOOSTS.twiceExceptional, 4);
-  }
-
-  if (topProfile.id === 'type3') {
-    boostAreas(areaScores, AREA_BOOSTS.socialVisibility, 2);
-  }
-
-  if (topProfile.id === 'type6') {
-    boostAreas(areaScores, AREA_BOOSTS.selfDirection, 2);
-  }
-
-  activeContextSignals.forEach((signal) => {
-    applyWeightedContextBoost(
-      areaScores,
-      signal,
-      topProfile.id,
-      overlapProfile?.id || null
-    );
-  });
-
-  applyStep3Boosts(areaScores, contextInput);
-  applyProfileAreaGuards(areaScores, topProfile.id);
-
-  const prioritizedAreaNames = buildPrioritizedAreaNames(
-    areaScores,
-    activeContextSignals,
-    topProfile.id,
-    overlapProfile?.id || null
-  );
-
-  const prioritizedNeeds = prioritizedAreaNames.map((area) => {
-    const primaryNeed = topNeedMap[area];
-    const overlapNeed = overlapNeedMap[area];
-    const reasonParts = [
-      `Sluit aan bij ${normalizeText(topProfile.shortTitle).toLowerCase()}.`
-    ];
-
-    if (overlapIsTight && overlapNeed) {
-      reasonParts.push(
-        `Wordt extra relevant door overlap met ${normalizeText(
-          overlapProfile.shortTitle
-        ).toLowerCase()}.`
-      );
-    }
-
-    const relevantContextSignal = findRelevantContextSignalForArea(
-      activeContextSignals,
-      area
-    );
-
-    if (relevantContextSignal) {
-      reasonParts.push(
-        CONTEXT_SIGNAL_REASON_TEXT[relevantContextSignal.id] ||
-          normalizeText(relevantContextSignal.prompt)
-      );
+      return;
     }
 
     if (
-      contextInput.knownSupportInfoPresence === 'yes' &&
-      topProfile.id === 'type5'
+      item.id === 'obs-written-less-than-thinking' ||
+      item.id === 'obs-strong-insight-weak-product'
     ) {
-      reasonParts.push(
-        'Bekende dossierinformatie vraagt om combinatie van uitdaging en passende ondersteuning.'
-      );
+      evidenceFlags.type5.hasStrengthIndicator = true;
+      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
     }
 
-    return {
-      area,
-      need: primaryNeed?.need || '',
-      advice: primaryNeed?.advice || '',
-      reason: reasonParts.join(' '),
-      sharedByOverlap: Boolean(overlapIsTight && overlapNeed)
-    };
+    if (
+      item.id === 'obs-planning-organization' ||
+      item.id === 'obs-inconsistent-quality'
+    ) {
+      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
+    }
+
+    const points = CATEGORY_POINTS[item.category][answerValue];
+    item.profileIds.forEach((profileId) => {
+      rawScoresByProfile[profileId] += points;
+      scoresByProfile[profileId] += points;
+      supportingObservationsByProfile[profileId].push({
+        id: item.id,
+        prompt: normalizeText(item.prompt),
+        category: item.category,
+        scoreContribution: points,
+        strength: answerValue,
+        strengthLabel: describeStrength(answerValue)
+      });
+    });
   });
 
-  let workHypothesis = topProfile.interpretation;
-  let shortInterpretation = `De observaties wijzen vooral in de richting van ${normalizeText(
-    topProfile.shortTitle
-  ).toLowerCase()} (${normalizeText(topProfile.title).toLowerCase()}).`;
+  applyContraIndicators(scoresByProfile, observationAnswers);
+  applyEligibilityAdjustments(scoresByProfile, evidenceFlags);
 
-  if (profileBase.profileStatusById[topProfile.id]?.status === 'cautious') {
-    shortInterpretation +=
-      ' Deze uitkomst vraagt terughoudende interpretatie en kan voorlopig alleen als signaleringsrichting worden gelezen.';
-  }
+  const profileStatusById = Object.fromEntries(
+    PROFILE_IDS.map((profileId) => [
+      profileId,
+      validateProfileEligibility(profileId, evidenceFlags)
+    ])
+  );
 
-  if (profileBase.profileStatusById[topProfile.id]?.status === 'insufficient') {
-    shortInterpretation +=
-      ' Deze uitkomst is op basis van de huidige informatie nog onvoldoende onderbouwd als profielrichting.';
-  }
-
-  if (
-    contextInput.knownSupportInfoPresence === 'yes' &&
-    topProfile.id === 'type5'
-  ) {
-    shortInterpretation +=
-      ' Lees deze uitkomst in samenhang met bekende dossierinformatie; de tool stelt geen ondersteuningsbehoefte of diagnose vast.';
-  }
-
-  const followUpSteps = [
-    'Bespreek de werkhypothese met collega’s of intern begeleider.',
-    'Kijk welke onderwijsaanpassingen direct in de klas uitgeprobeerd kunnen worden.',
-    'Evalueer na een periode opnieuw of de gekozen aanpak het functioneren zichtbaar verandert.'
-  ];
-
-  if (
-    ['type1', 'type2', 'type6'].includes(topProfile.id) &&
-    interpretation.discrepancySignals.some((signal) =>
-      signal.toLowerCase().includes('lagere of wisselende resultaten')
+  const sortedProfiles = PROFILE_IDS.map((profileId) => ({
+    profileId,
+    rawScore: rawScoresByProfile[profileId],
+    score: scoresByProfile[profileId],
+    status: profileStatusById[profileId],
+    evidence: supportingObservationsByProfile[profileId].sort(
+      (left, right) => right.scoreContribution - left.scoreContribution
     )
+  })).sort((left, right) => {
+    if (right.score !== left.score) return right.score - left.score;
+    if (left.status.status !== right.status.status) {
+      const rank = { regular: 2, cautious: 1, insufficient: 0 };
+      return rank[right.status.status] - rank[left.status.status];
+    }
+    return right.rawScore - left.rawScore;
+  });
+
+  const topProfile = sortedProfiles[0];
+  const secondProfile = sortedProfiles[1];
+
+  return {
+    scoreItems,
+    rawScoresByProfile,
+    scoresByProfile,
+    sortedProfiles,
+    profileStatusById,
+    evidenceFlags,
+    topProfileId: topProfile.profileId,
+    overlapProfileId:
+      topProfile.score > 0 &&
+      secondProfile.score > 0 &&
+      topProfile.score - secondProfile.score < PROFILE_DIRECTION_THRESHOLDS.clearDifference
+        ? secondProfile.profileId
+        : null,
+    profileDirectionLabel: resolveDirectionLabel(topProfile.score, secondProfile.score),
+    topScore: topProfile.score,
+    secondScore: secondProfile.score,
+    contextSignals,
+    strongestObservations: topProfile.evidence.slice(0, 5)
+  };
+}
+
+function buildTestEvidenceEntries(testScores) {
+  return Object.entries(testScores)
+    .map(([key, value]) => ({
+      key,
+      value,
+      numeric: TEST_LEVEL_MAP[value]
+    }))
+    .filter((entry) => entry.numeric !== null);
+}
+
+function summarizeTestLabels(entries) {
+  return entries.map((entry) => `${entry.key}: ${entry.value}`).join(', ');
+}
+
+export function analyzeRichInterpretation({
+  profileBase,
+  zoovSignal,
+  contextInput,
+  homeInput,
+  testScores,
+  notes
+}) {
+  const knownTests = buildTestEvidenceEntries(testScores);
+  const testValues = knownTests.map((entry) => entry.numeric);
+  const averageScore =
+    testValues.length > 0
+      ? testValues.reduce((sum, value) => sum + value, 0) / testValues.length
+      : null;
+  const minScore = testValues.length > 0 ? Math.min(...testValues) : null;
+  const maxScore = testValues.length > 0 ? Math.max(...testValues) : null;
+
+  const discrepancySignals = [];
+  const interpretationSignals = [...profileBase.contextSignals];
+
+  if (contextInput.settingDifference !== 'unknown') {
+    interpretationSignals.push({
+      id: 'setting-difference',
+      prompt: contextInput.settingDifference,
+      strength: 2
+    });
+  }
+
+  if (homeInput.pattern !== 'unknown') {
+    interpretationSignals.push({
+      id: 'home-pattern',
+      prompt:
+        homeInput.pattern === 'contrast'
+          ? 'Thuissituatie contrasteert met het schoolbeeld.'
+          : 'Thuissituatie bevestigt het schoolbeeld grotendeels.',
+      strength: 1
+    });
+  }
+
+  if (contextInput.knownSupportInfoPresence === 'yes') {
+    interpretationSignals.push({
+      id: 'known-support-info',
+      prompt:
+        contextInput.knownSupportInfoNote?.trim()
+          ? `Bekende dossierinformatie over relevante ondersteuningsinformatie: ${contextInput.knownSupportInfoNote.trim()}`
+          : 'Er is bekende dossierinformatie over relevante ondersteuningsinformatie.',
+      strength: 2
+    });
+  }
+
+  let performanceLabel = 'onvoldoende toetsinformatie';
+  let performanceSummary =
+    'Er zijn nog te weinig toetsgegevens ingevuld om een prestatiebeeld te beschrijven.';
+
+  if (knownTests.length > 0) {
+    if (averageScore >= 3.4 && minScore >= 3) {
+      performanceLabel = 'zichtbaar sterk prestatiebeeld';
+    } else if (averageScore >= 2.6 && minScore >= 2) {
+      performanceLabel = 'overwegend sterk prestatiebeeld';
+    } else if (
+      maxScore - minScore >= 3 ||
+      (['begrijpendLezen', 'rekenen'].some(
+        (key) => knownTests.find((entry) => entry.key === key)?.numeric >= 3
+      ) &&
+        ['dmt', 'avi', 'spelling'].some(
+          (key) => knownTests.find((entry) => entry.key === key)?.numeric <= 1
+        ))
+    ) {
+      performanceLabel = 'discrepantie tussen inzicht en basisvaardigheid';
+    } else if (averageScore < 1.5) {
+      performanceLabel = 'zwak of kwetsbaar prestatiebeeld';
+    } else {
+      performanceLabel = 'grillig of gemengd prestatiebeeld';
+    }
+
+    performanceSummary = `Toetsbeeld op basis van ingevulde gegevens: ${performanceLabel}. ${summarizeTestLabels(
+      knownTests
+    )}.`;
+  }
+
+  if (
+    profileBase.topProfileId === 'type4' &&
+    [
+      'zwak of kwetsbaar prestatiebeeld',
+      'grillig of gemengd prestatiebeeld',
+      'discrepantie tussen inzicht en basisvaardigheid'
+    ].includes(performanceLabel)
   ) {
-    followUpSteps.push(
-      'Verken waardoor de lagere of wisselende prestaties ontstaan voordat hieraan conclusies over profiel of ondersteuningsinformatie worden verbonden.'
+    discrepancySignals.push(
+      'Het profielbeeld en de toetsgegevens samen geven aanwijzingen voor mogelijke onderprestatie of mismatch met het aanbod.'
     );
   }
 
-  const caution =
-    topProfile.id === 'type5'
-      ? 'Type 5 wordt in deze tool alleen terughoudend gelezen. De tool signaleert patronen in schoolfunctioneren, maar stelt geen diagnose of oorzaak vast.'
-      : 'Deze uitkomst is een werkhypothese op basis van schoolse observaties en aanvullende contextinformatie. Het is geen diagnose.';
+  if (
+    profileBase.topProfileId === 'type5' &&
+    contextInput.knownSupportInfoPresence === 'yes' &&
+    ['discrepantie tussen inzicht en basisvaardigheid', 'grillig of gemengd prestatiebeeld'].includes(
+      performanceLabel
+    )
+  ) {
+    discrepancySignals.push(
+      'Er zijn signalen die kunnen passen bij een profielrichting waarin sterke kanten en bekende ondersteuningsinformatie samen aandacht vragen.'
+    );
+  }
 
-  const homeAttention =
-    homeInput.pattern === 'contrast'
-      ? 'Het schoolbeeld contrasteert met de thuissituatie; neem dit verschil expliciet mee in verdere duiding.'
-      : '';
+  if (
+    ['type1', 'type2', 'type6'].includes(profileBase.topProfileId) &&
+    ['zwak of kwetsbaar prestatiebeeld', 'grillig of gemengd prestatiebeeld'].includes(
+      performanceLabel
+    )
+  ) {
+    discrepancySignals.push(
+      'De lagere of wisselende resultaten passen niet vanzelfsprekend bij deze profielrichting. Het is verstandig te verkennen waardoor deze prestaties ontstaan.'
+    );
+  }
+
+  if (homeInput.pattern === 'contrast') {
+    discrepancySignals.push(
+      'Het beeld thuis contrasteert met het schoolbeeld en vraagt om nadere duiding in gesprek.'
+    );
+  }
+
+  const interpretationSummaryParts = [];
+
+  if (profileBase.strongestObservations.length > 0) {
+    interpretationSummaryParts.push(
+      `Sterkst meewegende observaties: ${profileBase.strongestObservations
+        .slice(0, 3)
+        .map((item) => item.prompt)
+        .join('; ')}.`
+    );
+  }
+
+  if (contextInput.knownSupportInfoPresence === 'yes') {
+    interpretationSummaryParts.push(
+      'Bekende dossierinformatie vraagt om terughoudende interpretatie van het profielbeeld en om afstemming tussen uitdaging en ondersteuning.'
+    );
+  }
+
+  if (notes?.trim()) {
+    interpretationSummaryParts.push(`Notities: ${notes.trim()}`);
+  }
 
   return {
-    prioritizedNeeds,
-    workHypothesis,
-    shortInterpretation,
-    followUpSteps,
-    caution,
-    homeAttention
+    knownTests,
+    performanceLabel,
+    performanceSummary,
+    discrepancySignals,
+    interpretationSignals,
+    interpretationSummary: interpretationSummaryParts.join(' '),
+    knownSupportInfoPresence: contextInput.knownSupportInfoPresence,
+    knownSupportInfoNote: contextInput.knownSupportInfoNote || ''
   };
+}
+
+export function buildProfileScoreOverview(profileBase, profilesById) {
+  return profileBase.sortedProfiles.map((item) => {
+    const profile = profilesById[item.profileId];
+
+    return {
+      profileId: item.profileId,
+      shortTitle: normalizeText(profile.shortTitle),
+      title: normalizeText(profile.title),
+      score: item.score,
+      rawScore: item.rawScore,
+      status: item.status
+    };
+  });
 }

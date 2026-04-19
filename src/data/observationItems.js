@@ -1,8 +1,8 @@
 export const OBSERVATION_SCORE_OPTIONS = [
   { value: 0, label: 'Niet waargenomen' },
-  { value: 1, label: 'Licht zichtbaar' },
-  { value: 2, label: 'Duidelijk zichtbaar' },
-  { value: 3, label: 'Sterk zichtbaar' }
+  { value: 1, label: 'Soms zichtbaar' },
+  { value: 2, label: 'Regelmatig zichtbaar' },
+  { value: 3, label: 'Duidelijk en consistent zichtbaar' }
 ];
 
 const observationItems = [
