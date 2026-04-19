@@ -160,7 +160,9 @@ function buildExportText({
   profilesById,
   notes
 }) {
-  const bestProfile = profilesById[profileBase.topProfileId];
+  const bestProfile = profileBase.topProfileId
+    ? profilesById[profileBase.topProfileId]
+    : null;
   const overlapProfile = profileBase.overlapProfileId
     ? profilesById[profileBase.overlapProfileId]
     : null;
@@ -198,13 +200,12 @@ function buildExportText({
     ),
     '',
     'Profielbeeld',
-    `Best passend profiel: ${formatProfileHeading(bestProfile)}`,
+    `Best passend profiel: ${bestProfile ? formatProfileHeading(bestProfile) : '-'}`,
     `Overlap: ${overlapProfile ? formatProfileHeading(overlapProfile) : '-'}`,
     '',
     'Score-overzicht per profiel',
     ...scoreOverview.map(
-      (item) =>
-        `${item.shortTitle} - ${item.title}: ${item.score} (${item.status.label})`
+      (item) => `${item.shortTitle} - ${item.title}: ${item.score}`
     ),
     '',
     'Prestatiebeeld',
@@ -228,7 +229,7 @@ function buildExportText({
           (item) =>
             `${toDisplay(item.prompt)} (${item.strengthLabel}; bijdrage ${item.scoreContribution})`
         )
-      : ['Nog geen observaties die de profielrichting dragen.']),
+      : ['Nog geen observaties die een specifieke profielrichting dragen.']),
     '',
     'Werkhypothese',
     advice.workHypothesis,
@@ -248,7 +249,7 @@ function buildExportText({
     'Notities',
     notes || '-',
     '',
-        'Kanttekening',
+    'Kanttekening',
     advice.caution,
     'Dit is geen diagnose.',
     'Context, dossierinformatie, thuissituatie, ZOOV+ en toetsgegevens tellen niet mee in de ruwe profielscore.'
@@ -256,6 +257,7 @@ function buildExportText({
 
   return lines.join('\n');
 }
+
 function App() {
   const profilesById = useMemo(buildProfilesById, []);
 
@@ -289,13 +291,12 @@ function App() {
     () =>
       analyzeRichInterpretation({
         profileBase,
-        zoovSignal,
         contextInput,
         homeInput,
         testScores,
         notes
       }),
-    [profileBase, zoovSignal, contextInput, homeInput, testScores, notes]
+    [profileBase, contextInput, homeInput, testScores, notes]
   );
 
   const scoreOverview = useMemo(
@@ -315,7 +316,10 @@ function App() {
     [profileBase, interpretation, profilesById, contextInput, homeInput]
   );
 
-  const bestProfile = profilesById[profileBase.topProfileId];
+  const bestProfile = profileBase.topProfileId
+    ? profilesById[profileBase.topProfileId]
+    : null;
+
   const overlapProfile = profileBase.overlapProfileId
     ? profilesById[profileBase.overlapProfileId]
     : null;
@@ -439,6 +443,7 @@ function App() {
       profilesById,
       notes
     });
+
     const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -485,7 +490,8 @@ function App() {
         `
       )
       .join('');
-          const html = `
+
+    const html = `
       <html>
         <head>
           <title>Printbaar observatieformulier</title>
@@ -498,7 +504,7 @@ function App() {
               line-height: 1.4;
               font-size: 14px;
             }
-                h1 { font-size: 24px; margin: 0 0 6px 0; }
+            h1 { font-size: 24px; margin: 0 0 6px 0; }
             .subtitle { margin: 0 0 20px 0; color: #526274; }
             .meta {
               margin-bottom: 24px;
@@ -719,7 +725,7 @@ function App() {
     );
   }
 
-    function renderTestsStep() {
+  function renderTestsStep() {
     return (
       <article className="panel">
         <div className="panel-head">
@@ -749,7 +755,7 @@ function App() {
                   </option>
                 ))}
               </select>
-                         </label>
+            </label>
           ))}
         </div>
       </article>
@@ -994,27 +1000,29 @@ function App() {
       </article>
     );
   }
+
   function renderResultsStep() {
     return (
       <div className="output-column">
         <article className="panel result-panel">
-                       <div className="panel-head">
+          <div className="panel-head">
             <div>
               <p className="section-label">Profielbeeld</p>
               <h2>{advice.resultHeading}</h2>
-              <p className="helper-text">
-                {advice.resultLabel} · {profileBase.profileStatusById[bestProfile.id]?.label}
-              </p>
+              <p className="helper-text">{advice.resultLabel}</p>
             </div>
-            <button
-              type="button"
-              className="info-button"
-              onClick={() => setIsProfileModalOpen(true)}
-              aria-label="Open profieluitleg"
-            >
-              ?
-            </button>
+            {bestProfile ? (
+              <button
+                type="button"
+                className="info-button"
+                onClick={() => setIsProfileModalOpen(true)}
+                aria-label="Open profieluitleg"
+              >
+                ?
+              </button>
+            ) : null}
           </div>
+
           {overlapProfile && (
             <div className="meta-pills">
               <span className="pill subtle-pill">
@@ -1039,7 +1047,6 @@ function App() {
                 <div>
                   <strong>{item.shortTitle}</strong>
                   <span>{item.title}</span>
-                  <small>{item.status.label}</small>
                 </div>
                 <strong>{item.score}</strong>
               </div>
@@ -1135,6 +1142,7 @@ function App() {
       </div>
     );
   }
+
   function renderCurrentStep() {
     if (currentStepConfig.key === 'student') return renderStudentStep();
     if (currentStepConfig.key === 'tests') return renderTestsStep();
@@ -1224,7 +1232,8 @@ function App() {
                   </span>
                 )}
               </div>
-                  <button
+
+              <button
                 type="button"
                 className="primary-button"
                 onClick={handleNext}
@@ -1243,7 +1252,7 @@ function App() {
         </section>
       </main>
 
-      {isProfileModalOpen && (
+      {isProfileModalOpen && bestProfile && (
         <div
           className="modal-backdrop"
           onClick={() => setIsProfileModalOpen(false)}
@@ -1305,4 +1314,4 @@ function App() {
   );
 }
 
-export default App;                  
+export default App;
