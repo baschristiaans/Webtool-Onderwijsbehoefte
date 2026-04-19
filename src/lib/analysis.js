@@ -336,36 +336,44 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
   });
 
   const mainProfiles = getMainProfiles(sortedProfiles);
-  const mainTopProfile = mainProfiles[0];
-  const mainSecondProfile = mainProfiles[1];
+  const mainTopProfile = mainProfiles[0] || null;
+  const mainSecondProfile = mainProfiles[1] || null;
   const type5Profile = sortedProfiles.find((item) => item.profileId === 'type5');
 
-  const hasNoProfileSignal = positiveObservationCount === 0 || mainTopProfile.score <= 0;
+  const type5Eligible =
+    Boolean(type5Profile) &&
+    type5Profile.status.status === 'regular' &&
+    type5Profile.score > 0;
 
-  const type5Eligible = type5Profile.status.status === 'regular' && type5Profile.score > 0;
-
-  let topProfile = mainTopProfile;
+  let topProfile = null;
   let overlapProfile = null;
-  let directionKey = 'single';
+  let directionKey = 'no_signal';
 
-  if (hasNoProfileSignal) {
-    topProfile = null;
-    overlapProfile = null;
-    directionKey = 'no_signal';
-  } else if (type5Eligible) {
+  if (type5Eligible) {
     topProfile = type5Profile;
-    overlapProfile = mainTopProfile.score > 0 ? mainTopProfile : null;
+    overlapProfile =
+      mainTopProfile && mainTopProfile.score > 0 ? mainTopProfile : null;
     directionKey = overlapProfile ? 'overlap' : 'single';
-  } else {
-    const overlapDifference = mainTopProfile.score - (mainSecondProfile?.score ?? 0);
+  } else if (mainTopProfile && mainTopProfile.score > 0) {
+    const overlapDifference =
+      mainTopProfile.score - (mainSecondProfile?.score ?? 0);
+
     const hasMeaningfulOverlap =
-      mainTopProfile.score > 0 &&
       (mainSecondProfile?.score ?? 0) > 0 &&
       overlapDifference <= PROFILE_DIRECTION_THRESHOLDS.overlapDifference;
 
     topProfile = mainTopProfile;
     overlapProfile = hasMeaningfulOverlap ? mainSecondProfile : null;
     directionKey = hasMeaningfulOverlap ? 'overlap' : 'single';
+  }
+
+  const hasNoProfileSignal =
+    positiveObservationCount === 0 || !topProfile || topProfile.score <= 0;
+
+  if (hasNoProfileSignal) {
+    topProfile = null;
+    overlapProfile = null;
+    directionKey = 'no_signal';
   }
 
   const evidenceQuality = buildEvidenceQuality(topProfile, overlapProfile);
@@ -393,7 +401,8 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     contextSignals,
     strongestObservations,
     evidenceQuality,
-    overlapDifference: topProfile && overlapProfile ? topProfile.score - overlapProfile.score : 0
+    overlapDifference:
+      topProfile && overlapProfile ? topProfile.score - overlapProfile.score : 0
   };
 }
 
