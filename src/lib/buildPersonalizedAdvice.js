@@ -214,11 +214,10 @@ function findRelevantContextSignalForArea(contextSignals, area) {
   if (matchingSignals.length === 0) return null;
 
   return matchingSignals.sort((left, right) => {
-    const leftWeight =
-      (CONTEXT_SIGNAL_AREA_WEIGHTS[left.id] || {})[area] || 0;
-    const rightWeight =
-      (CONTEXT_SIGNAL_AREA_WEIGHTS[right.id] || {})[area] || 0;
-          if (rightWeight !== leftWeight) return rightWeight - leftWeight;
+    const leftWeight = (CONTEXT_SIGNAL_AREA_WEIGHTS[left.id] || {})[area] || 0;
+    const rightWeight = (CONTEXT_SIGNAL_AREA_WEIGHTS[right.id] || {})[area] || 0;
+
+    if (rightWeight !== leftWeight) return rightWeight - leftWeight;
     return right.strength - left.strength;
   })[0];
 }
@@ -309,48 +308,76 @@ function combineAdviceText(primaryText, overlapText, overlapShortTitle) {
   ).toLowerCase()}: ${overlapText}`;
 }
 
+function buildGenericNoSignalAdvice() {
+  return {
+    prioritizedNeeds: [
+      {
+        area: 'Leerstof en opdrachten',
+        need:
+          'Er is nog geen specifieke profielrichting zichtbaar. Het helpt om te observeren wat er gebeurt wanneer de leerling compactere, betekenisvollere of uitdagendere taken krijgt.',
+        advice:
+          'Bied tijdelijk een kleine, duidelijk afgebakende verrijkings- of verdiepingsopdracht aan en kijk of betrokkenheid, initiatief of kwaliteit van denken dan verandert.',
+        reason:
+          'Zonder positieve profielsignalen zegt vooral de reactie op aangepast aanbod iets over verdere duiding.'
+      },
+      {
+        area: 'Leeractiviteiten',
+        need:
+          'Er is behoefte aan zicht op hoe de leerling functioneert bij verschillende vormen van werken, zoals zelfstandig, in klein verband of mondeling.',
+        advice:
+          'Vergelijk doelgericht meerdere situaties: klassikaal, individueel, mondeling, schriftelijk en bij open of gesloten opdrachten.',
+        reason:
+          'Verschillen tussen situaties kunnen later richting geven aan profielduiding en onderwijsafstemming.'
+      },
+      {
+        area: 'Leeromgeving',
+        need:
+          'Er is behoefte aan observaties in een omgeving waarin uitdaging en sociale veiligheid allebei aanwezig zijn.',
+        advice:
+          'Let erop of de leerling in een kleinere, veiligere of inhoudelijk passender setting ander gedrag laat zien dan in de hele groep.',
+        reason:
+          'Contextverschillen kunnen verklaren waarom profielsignalen in de gewone klassensituatie nog weinig zichtbaar zijn.'
+      },
+      {
+        area: 'Leerkracht',
+        need:
+          'Er is behoefte aan gezamenlijke duiding van de observaties, zodat niet te snel een profiel wordt verondersteld of uitgesloten.',
+        advice:
+          'Bespreek de huidige observaties met collega of intern begeleider en spreek af welke aanvullende observaties of kleine interventies eerst worden uitgeprobeerd.',
+        reason:
+          'Een nulsituatie vraagt niet om forceren, maar om gerichte vervolgstappen.'
+      }
+    ],
+    workHypothesis:
+      'In de huidige observaties zijn geen duidelijke profielsignalen naar voren gekomen.',
+    shortInterpretation:
+      'Dat betekent niet dat er geen onderwijsbehoeften zijn, maar wel dat de ingevulde observaties op dit moment nog geen specifieke profielrichting dragen.',
+    followUpSteps: [
+      'Observeer opnieuw tijdens betekenisvolle of uitdagendere taken.',
+      'Vergelijk het functioneren van de leerling in verschillende settings en werkvormen.',
+      'Bespreek de observaties met collega of intern begeleider en bepaal welke aanvullende observaties nodig zijn.'
+    ],
+    caution:
+      'Deze uitkomst is een werkhypothese op basis van schoolse observaties. De tool geeft hier bewust geen geforceerd profiel wanneer duidelijke profielsignalen ontbreken.',
+    homeAttention: '',
+    resultHeading: 'Geen duidelijke profielsignalen zichtbaar',
+    resultLabel: 'Werkhypothese',
+    useCombinedAdvice: false
+  };
+}
+
 function buildInterpretationPrefix(profileBase, topProfile, overlapProfile) {
-  if (
-    profileBase.profileDirectionLabel === 'overlappende profielrichting' &&
-    overlapProfile
-  ) {
-    return `De observaties wijzen op een overlappende profielrichting tussen ${normalizeText(
+  if (profileBase.directionKey === 'overlap' && overlapProfile) {
+    return `De observaties wijzen op een gecombineerd profielbeeld van ${normalizeText(
       topProfile.shortTitle
     ).toLowerCase()} en ${normalizeText(
       overlapProfile.shortTitle
-    ).toLowerCase()}. Deze uitkomst wordt daarom als gecombineerde werkhypothese gelezen.`;
-  }
-
-  if (
-    profileBase.profileDirectionLabel === 'voorlopige overlappende profielrichting' &&
-    overlapProfile
-  ) {
-    return `De observaties wijzen voorlopig op een overlappende profielrichting tussen ${normalizeText(
-      topProfile.shortTitle
-    ).toLowerCase()} en ${normalizeText(
-      overlapProfile.shortTitle
-    ).toLowerCase()}. De invoer is nog beperkt, maar de combinatie is wel bruikbaar als voorlopige werkhypothese.`;
-  }
-
-  if (profileBase.profileDirectionLabel === 'relatief duidelijke profielrichting') {
-    return `De observaties wijzen vooral in de richting van ${normalizeText(
-      topProfile.shortTitle
     ).toLowerCase()}.`;
   }
 
-  if (profileBase.profileDirectionLabel === 'voorzichtige profielrichting') {
-    return profileBase.hasLimitedInput
-      ? `De observaties wijzen voorlopig in de richting van ${normalizeText(
-          topProfile.shortTitle
-        ).toLowerCase()}. Lees dit als werkhypothese op basis van nog beperkte invoer.`
-      : `De observaties wijzen voorzichtig in de richting van ${normalizeText(
-          topProfile.shortTitle
-        ).toLowerCase()}.`;
-  }
-
-  return `De invoer is nog beperkt. De tool geeft daarom een voorlopige werkhypothese in de richting van ${normalizeText(
+  return `De observaties wijzen vooral in de richting van ${normalizeText(
     topProfile.shortTitle
-  ).toLowerCase()}, met nadruk op verder observeren en uitproberen in de klas.`;
+  ).toLowerCase()}.`;
 }
 
 export default function buildPersonalizedAdvice({
@@ -360,10 +387,15 @@ export default function buildPersonalizedAdvice({
   contextInput,
   homeInput
 }) {
+  if (profileBase.directionKey === 'no_signal' || !profileBase.topProfileId) {
+    return buildGenericNoSignalAdvice();
+  }
+
   const topProfile = profilesById[profileBase.topProfileId];
   const overlapProfile = profileBase.overlapProfileId
     ? profilesById[profileBase.overlapProfileId]
     : null;
+
   const topNeedMap = getNeedMap(topProfile);
   const overlapNeedMap = overlapProfile ? getNeedMap(overlapProfile) : {};
   const areaScores = createAreaScoreMap();
@@ -382,11 +414,7 @@ export default function buildPersonalizedAdvice({
   const overlapIsTight = overlapProfile && overlapDifference <= 1;
   const overlapIsRelevant = overlapProfile && overlapDifference <= 3;
   const useCombinedAdvice = Boolean(
-    overlapProfile &&
-      [
-        'overlappende profielrichting',
-        'voorlopige overlappende profielrichting'
-      ].includes(profileBase.profileDirectionLabel)
+    overlapProfile && profileBase.directionKey === 'overlap'
   );
 
   if (overlapIsRelevant) {
@@ -438,7 +466,8 @@ export default function buildPersonalizedAdvice({
   if (useCombinedAdvice && overlapProfile) {
     applyProfileAreaGuards(areaScores, overlapProfile.id);
   }
-    const prioritizedAreaNames = buildPrioritizedAreaNames(
+
+  const prioritizedAreaNames = buildPrioritizedAreaNames(
     areaScores,
     activeContextSignals,
     topProfile.id,
@@ -513,11 +542,6 @@ export default function buildPersonalizedAdvice({
     ).toLowerCase()} zien dat ook deze lijn moet worden meegelezen: ${overlapProfile.interpretation}`;
   }
 
-  if (profileBase.profileStatusById[topProfile.id]?.status === 'cautious') {
-    shortInterpretation +=
-      ' De uitkomst vraagt extra zorgvuldige lezing en moet als signaleringsgerichte werkhypothese worden gebruikt.';
-  }
-
   if (
     contextInput.knownSupportInfoPresence === 'yes' &&
     (topProfile.id === 'type5' || overlapProfile?.id === 'type5')
@@ -531,15 +555,9 @@ export default function buildPersonalizedAdvice({
 
   const followUpSteps = [];
 
-  if (profileBase.hasLimitedInput) {
-    followUpSteps.push(
-      'Gebruik deze uitkomst voorlopig en verzamel in de komende periode extra observaties in verschillende lessen en situaties.'
-    );
-  } else {
-    followUpSteps.push(
-      'Bespreek de werkhypothese met collega’s of intern begeleider en vertaal deze naar een korte gezamenlijke aanpak.'
-    );
-  }
+  followUpSteps.push(
+    'Bespreek de werkhypothese met collega’s of intern begeleider en vertaal deze naar een korte gezamenlijke aanpak.'
+  );
 
   if (useCombinedAdvice && overlapProfile) {
     followUpSteps.push(
@@ -579,9 +597,7 @@ export default function buildPersonalizedAdvice({
   const caution =
     topProfile.id === 'type5' || overlapProfile?.id === 'type5'
       ? 'Type 5 wordt in deze tool alleen als werkhypothese meegenomen wanneer er naast uitvoeringssignalen ook bekende relevante ondersteuningsinformatie is ingevuld. De uitkomst blijft een duiding van schoolfunctioneren, geen diagnose.'
-      : profileBase.hasLimitedInput
-        ? 'De invoer is nog beperkt. Gebruik de uitkomst daarom als voorlopige werkhypothese en toets deze in de klas verder.'
-        : 'Deze uitkomst is een werkhypothese op basis van schoolse observaties en aanvullende contextinformatie. Het is geen diagnose.';
+      : 'Deze uitkomst is een werkhypothese op basis van schoolse observaties en aanvullende contextinformatie. Het is geen diagnose.';
 
   const homeAttention =
     homeInput.pattern === 'contrast'
