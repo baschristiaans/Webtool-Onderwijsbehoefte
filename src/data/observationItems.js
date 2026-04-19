@@ -106,7 +106,7 @@ const observationItems = [
     prompt:
       'De leerling reageert afwerend of oppositioneel op schoolwerk.',
     category: 'supporting',
-    profileIds: ['type2', 'type4']
+    profileIds: ['type4']
   },
   {
     id: 'obs-incomplete-work',

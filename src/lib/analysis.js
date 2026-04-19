@@ -11,12 +11,15 @@ export const PROFILE_IDS = [
 
 export const PROFILE_DIRECTION_THRESHOLDS = {
   overlapDifference: 2,
-  clearDifference: 4
+  clearDifference: 4,
+  minimumType5Score: 4
 };
 
 const CATEGORY_POINTS = {
-  core: [0, 1, 2, 3],
-  supporting: [0, 1, 1, 2]
+  coreUnique: [0, 1, 2, 3],
+  coreShared: [0, 1, 1, 2],
+  supportingUnique: [0, 1, 1, 2],
+  supportingShared: [0, 0, 1, 1]
 };
 
 const TEST_LEVEL_MAP = {
@@ -27,6 +30,12 @@ const TEST_LEVEL_MAP = {
   vulnerable: 1,
   weak: 0
 };
+
+const TYPE2_ANCHOR_ITEMS = [
+  'obs-critical-rules',
+  'obs-original-ideas',
+  'obs-discussion-overtakes-task'
+];
 
 export function normalizeText(text) {
   if (typeof text !== 'string') return text;
@@ -85,6 +94,16 @@ function createEvidenceFlags() {
   };
 }
 
+function getPointKey(item) {
+  const isShared = item.profileIds.length > 1;
+
+  if (item.category === 'core') {
+    return isShared ? 'coreShared' : 'coreUnique';
+  }
+
+  return isShared ? 'supportingShared' : 'supportingUnique';
+}
+
 function applyContraIndicators(scoresByProfile, observationAnswers) {
   const strongType6Items = [
     'obs-seeks-extra-challenge',
@@ -112,7 +131,22 @@ function applyContraIndicators(scoresByProfile, observationAnswers) {
   }
 }
 
-function validateProfileEligibility(profileId, evidenceFlags) {
+function applyType2AnchorRule(scoresByProfile, observationAnswers) {
+  const strongAnchorCount = TYPE2_ANCHOR_ITEMS.filter(
+    (id) => Number(observationAnswers[id] ?? 0) >= 2
+  ).length;
+
+  if (strongAnchorCount === 0) {
+    scoresByProfile.type2 = Math.max(0, scoresByProfile.type2 - 3);
+    return;
+  }
+
+  if (strongAnchorCount === 1) {
+    scoresByProfile.type2 = Math.max(0, scoresByProfile.type2 - 1);
+  }
+}
+
+function validateProfileEligibility(profileId, evidenceFlags, score) {
   if (profileId !== 'type5') {
     return {
       status: 'regular'
@@ -122,18 +156,13 @@ function validateProfileEligibility(profileId, evidenceFlags) {
   const flags = evidenceFlags.type5;
 
   if (
+    flags.hasKnownSupportInfoContext &&
     flags.hasStrengthIndicator &&
     flags.hasExecutionMismatchIndicator &&
-    flags.hasKnownSupportInfoContext
+    score >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score
   ) {
     return {
       status: 'regular'
-    };
-  }
-
-  if (flags.hasStrengthIndicator && flags.hasExecutionMismatchIndicator) {
-    return {
-      status: 'cautious'
     };
   }
 
@@ -143,14 +172,16 @@ function validateProfileEligibility(profileId, evidenceFlags) {
 }
 
 function applyEligibilityAdjustments(scoresByProfile, evidenceFlags) {
-  const status = validateProfileEligibility('type5', evidenceFlags).status;
+  const flags = evidenceFlags.type5;
 
-  if (status === 'insufficient') {
-    scoresByProfile.type5 = Math.max(0, scoresByProfile.type5 - 2);
-  }
+  const type5Eligible =
+    flags.hasKnownSupportInfoContext &&
+    flags.hasStrengthIndicator &&
+    flags.hasExecutionMismatchIndicator &&
+    scoresByProfile.type5 >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score;
 
-  if (status === 'cautious') {
-    scoresByProfile.type5 = Math.max(0, scoresByProfile.type5 - 1);
+  if (!type5Eligible) {
+    scoresByProfile.type5 = 0;
   }
 }
 
@@ -204,6 +235,10 @@ function buildStrongestObservations(topProfile, secondProfile, includeOverlap) {
     .slice(0, 5);
 }
 
+function getMainProfiles(sortedProfiles) {
+  return sortedProfiles.filter((item) => item.profileId !== 'type5');
+}
+
 export function analyzeProfileBase(observationAnswers, contextInput = {}) {
   const rawScoresByProfile = createEmptyProfileMap(() => 0);
   const scoresByProfile = createEmptyProfileMap(() => 0);
@@ -211,10 +246,6 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
   const scoreItems = observationItems.filter((item) => item.category !== 'context');
   const contextSignals = [];
   const evidenceFlags = createEvidenceFlags();
-
-  const answeredObservationCount = observationItems.filter(
-    (item) => observationAnswers[item.id] !== null && observationAnswers[item.id] !== undefined
-  ).length;
 
   const positiveObservationCount = observationItems.filter(
     (item) => Number(observationAnswers[item.id] ?? 0) > 0
@@ -258,7 +289,8 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
       evidenceFlags.type5.hasExecutionMismatchIndicator = true;
     }
 
-    const points = CATEGORY_POINTS[item.category][answerValue];
+    const pointKey = getPointKey(item);
+    const points = CATEGORY_POINTS[pointKey][answerValue];
 
     item.profileIds.forEach((profileId) => {
       rawScoresByProfile[profileId] += points;
@@ -269,18 +301,20 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
         category: item.category,
         scoreContribution: points,
         strength: answerValue,
-        strengthLabel: describeStrength(answerValue)
+        strengthLabel: describeStrength(answerValue),
+        distinction: item.profileIds.length > 1 ? 'shared' : 'unique'
       });
     });
   });
 
   applyContraIndicators(scoresByProfile, observationAnswers);
+  applyType2AnchorRule(scoresByProfile, observationAnswers);
   applyEligibilityAdjustments(scoresByProfile, evidenceFlags);
 
   const profileStatusById = Object.fromEntries(
     PROFILE_IDS.map((profileId) => [
       profileId,
-      validateProfileEligibility(profileId, evidenceFlags)
+      validateProfileEligibility(profileId, evidenceFlags, scoresByProfile[profileId])
     ])
   );
 
@@ -295,35 +329,50 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
   })).sort((left, right) => {
     if (right.score !== left.score) return right.score - left.score;
     if (left.status.status !== right.status.status) {
-      const rank = { regular: 2, cautious: 1, insufficient: 0 };
+      const rank = { regular: 2, insufficient: 0 };
       return rank[right.status.status] - rank[left.status.status];
     }
     return right.rawScore - left.rawScore;
   });
 
-  const topProfile = sortedProfiles[0];
-  const secondProfile = sortedProfiles[1];
-  const overlapDifference = topProfile.score - secondProfile.score;
-  const hasNoProfileSignal = positiveObservationCount === 0 || topProfile.score <= 0;
+  const mainProfiles = getMainProfiles(sortedProfiles);
+  const mainTopProfile = mainProfiles[0];
+  const mainSecondProfile = mainProfiles[1];
+  const type5Profile = sortedProfiles.find((item) => item.profileId === 'type5');
 
-  const hasMeaningfulOverlap =
-    !hasNoProfileSignal &&
-    topProfile.score > 0 &&
-    secondProfile.score > 0 &&
-    secondProfile.status.status !== 'insufficient' &&
-    overlapDifference <= PROFILE_DIRECTION_THRESHOLDS.overlapDifference;
+  const hasNoProfileSignal = positiveObservationCount === 0 || mainTopProfile.score <= 0;
 
-  const directionKey = hasNoProfileSignal
-    ? 'no_signal'
-    : hasMeaningfulOverlap
-      ? 'overlap'
-      : 'single';
+  const type5Eligible = type5Profile.status.status === 'regular' && type5Profile.score > 0;
 
-  const evidenceQuality = buildEvidenceQuality(topProfile, secondProfile);
+  let topProfile = mainTopProfile;
+  let overlapProfile = null;
+  let directionKey = 'single';
+
+  if (hasNoProfileSignal) {
+    topProfile = null;
+    overlapProfile = null;
+    directionKey = 'no_signal';
+  } else if (type5Eligible) {
+    topProfile = type5Profile;
+    overlapProfile = mainTopProfile.score > 0 ? mainTopProfile : null;
+    directionKey = overlapProfile ? 'overlap' : 'single';
+  } else {
+    const overlapDifference = mainTopProfile.score - (mainSecondProfile?.score ?? 0);
+    const hasMeaningfulOverlap =
+      mainTopProfile.score > 0 &&
+      (mainSecondProfile?.score ?? 0) > 0 &&
+      overlapDifference <= PROFILE_DIRECTION_THRESHOLDS.overlapDifference;
+
+    topProfile = mainTopProfile;
+    overlapProfile = hasMeaningfulOverlap ? mainSecondProfile : null;
+    directionKey = hasMeaningfulOverlap ? 'overlap' : 'single';
+  }
+
+  const evidenceQuality = buildEvidenceQuality(topProfile, overlapProfile);
   const strongestObservations = buildStrongestObservations(
     topProfile,
-    secondProfile,
-    hasMeaningfulOverlap
+    overlapProfile,
+    Boolean(overlapProfile)
   );
 
   return {
@@ -333,19 +382,18 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     sortedProfiles,
     profileStatusById,
     evidenceFlags,
-    answeredObservationCount,
     positiveObservationCount,
     hasNoProfileSignal,
-    hasMeaningfulOverlap,
+    hasMeaningfulOverlap: Boolean(overlapProfile),
     directionKey,
-    topProfileId: hasNoProfileSignal ? null : topProfile.profileId,
-    overlapProfileId: hasMeaningfulOverlap ? secondProfile.profileId : null,
-    topScore: topProfile.score,
-    secondScore: secondProfile.score,
+    topProfileId: topProfile ? topProfile.profileId : null,
+    overlapProfileId: overlapProfile ? overlapProfile.profileId : null,
+    topScore: topProfile ? topProfile.score : 0,
+    secondScore: overlapProfile ? overlapProfile.score : 0,
     contextSignals,
     strongestObservations,
     evidenceQuality,
-    overlapDifference
+    overlapDifference: topProfile && overlapProfile ? topProfile.score - overlapProfile.score : 0
   };
 }
 
