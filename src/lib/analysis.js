@@ -10,9 +10,8 @@ export const PROFILE_IDS = [
 ];
 
 export const PROFILE_DIRECTION_THRESHOLDS = {
-  minimumTopScore: 6,
-  clearDifference: 3,
-  cautiousDifference: 1
+  overlapDifference: 2,
+  clearDifference: 4
 };
 
 const CATEGORY_POINTS = {
@@ -69,39 +68,6 @@ function createEmptyProfileMap(initialValueFactory) {
   );
 }
 
-function resolveDirectionLabel({
-  topScore,
-  secondScore,
-  topStatus,
-  hasMeaningfulOverlap,
-  hasLimitedInput
-}) {
-  if (hasMeaningfulOverlap) {
-    return hasLimitedInput
-      ? 'voorlopige overlappende profielrichting'
-      : 'overlappende profielrichting';
-  }
-
-  if (topStatus === 'insufficient' && topScore <= 0) {
-    return 'beperkte invoer';
-  }
-
-  if (topScore <= 0) {
-    return 'beperkte invoer';
-  }
-
-  const difference = topScore - secondScore;
-
-  if (
-    topScore >= PROFILE_DIRECTION_THRESHOLDS.minimumTopScore &&
-    difference >= PROFILE_DIRECTION_THRESHOLDS.clearDifference
-  ) {
-    return 'relatief duidelijke profielrichting';
-  }
-
-  return 'voorzichtige profielrichting';
-}
-
 function describeStrength(answerValue) {
   if (answerValue === 3) return 'duidelijk en consistent zichtbaar';
   if (answerValue === 2) return 'regelmatig zichtbaar';
@@ -149,8 +115,7 @@ function applyContraIndicators(scoresByProfile, observationAnswers) {
 function validateProfileEligibility(profileId, evidenceFlags) {
   if (profileId !== 'type5') {
     return {
-      status: 'regular',
-      label: 'reguliere profielrichting'
+      status: 'regular'
     };
   }
 
@@ -162,21 +127,18 @@ function validateProfileEligibility(profileId, evidenceFlags) {
     flags.hasKnownSupportInfoContext
   ) {
     return {
-      status: 'regular',
-      label: 'reguliere profielrichting'
+      status: 'regular'
     };
   }
 
   if (flags.hasStrengthIndicator && flags.hasExecutionMismatchIndicator) {
     return {
-      status: 'cautious',
-      label: 'voorzichtig: alleen als signaleringsrichting lezen'
+      status: 'cautious'
     };
   }
 
   return {
-    status: 'insufficient',
-    label: 'onvoldoende onderbouwd als profielrichting'
+    status: 'insufficient'
   };
 }
 
@@ -193,6 +155,8 @@ function applyEligibilityAdjustments(scoresByProfile, evidenceFlags) {
 }
 
 function buildEvidenceQuality(topProfile, secondProfile) {
+  if (!topProfile || topProfile.score <= 0) return 'low';
+
   const topEvidenceCount = topProfile.evidence.length;
   const secondScore = secondProfile?.score ?? 0;
   const scoreGap = topProfile.score - secondScore;
@@ -213,12 +177,15 @@ function buildEvidenceQuality(topProfile, secondProfile) {
 }
 
 function buildStrongestObservations(topProfile, secondProfile, includeOverlap) {
+  if (!topProfile || topProfile.score <= 0) return [];
+
   const sourceItems = includeOverlap
     ? [...topProfile.evidence, ...(secondProfile?.evidence || [])]
     : [...topProfile.evidence];
 
   const uniqueById = new Map();
-    sourceItems.forEach((item) => {
+
+  sourceItems.forEach((item) => {
     const existing = uniqueById.get(item.id);
 
     if (!existing || item.scoreContribution > existing.scoreContribution) {
@@ -292,6 +259,7 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     }
 
     const points = CATEGORY_POINTS[item.category][answerValue];
+
     item.profileIds.forEach((profileId) => {
       rawScoresByProfile[profileId] += points;
       scoresByProfile[profileId] += points;
@@ -336,16 +304,20 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
   const topProfile = sortedProfiles[0];
   const secondProfile = sortedProfiles[1];
   const overlapDifference = topProfile.score - secondProfile.score;
-  const hasLimitedInput =
-    answeredObservationCount < 4 ||
-    positiveObservationCount < 2 ||
-    topProfile.score < 3;
+  const hasNoProfileSignal = positiveObservationCount === 0 || topProfile.score <= 0;
 
   const hasMeaningfulOverlap =
+    !hasNoProfileSignal &&
     topProfile.score > 0 &&
     secondProfile.score > 0 &&
     secondProfile.status.status !== 'insufficient' &&
-    overlapDifference <= PROFILE_DIRECTION_THRESHOLDS.clearDifference;
+    overlapDifference <= PROFILE_DIRECTION_THRESHOLDS.overlapDifference;
+
+  const directionKey = hasNoProfileSignal
+    ? 'no_signal'
+    : hasMeaningfulOverlap
+      ? 'overlap'
+      : 'single';
 
   const evidenceQuality = buildEvidenceQuality(topProfile, secondProfile);
   const strongestObservations = buildStrongestObservations(
@@ -363,17 +335,11 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     evidenceFlags,
     answeredObservationCount,
     positiveObservationCount,
-    hasLimitedInput,
+    hasNoProfileSignal,
     hasMeaningfulOverlap,
-    topProfileId: topProfile.profileId,
+    directionKey,
+    topProfileId: hasNoProfileSignal ? null : topProfile.profileId,
     overlapProfileId: hasMeaningfulOverlap ? secondProfile.profileId : null,
-    profileDirectionLabel: resolveDirectionLabel({
-      topScore: topProfile.score,
-      secondScore: secondProfile.score,
-      topStatus: topProfile.status.status,
-      hasMeaningfulOverlap,
-      hasLimitedInput
-    }),
     topScore: topProfile.score,
     secondScore: secondProfile.score,
     contextSignals,
@@ -382,7 +348,8 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     overlapDifference
   };
 }
-function buildTestEvidenceEntriesfunction (testScores) {
+
+function buildTestEvidenceEntries(testScores) {
   return Object.entries(testScores)
     .map(([key, value]) => ({
       key,
@@ -398,7 +365,6 @@ function summarizeTestLabels(entries) {
 
 export function analyzeRichInterpretation({
   profileBase,
-  zoovSignal,
   contextInput,
   homeInput,
   testScores,
@@ -436,7 +402,7 @@ export function analyzeRichInterpretation({
   }
 
   if (contextInput.knownSupportInfoPresence === 'yes') {
-        interpretationSignals.push({
+    interpretationSignals.push({
       id: 'known-support-info',
       prompt:
         contextInput.knownSupportInfoNote?.trim()
@@ -532,12 +498,6 @@ export function analyzeRichInterpretation({
   if (contextInput.knownSupportInfoPresence === 'yes') {
     interpretationSummaryParts.push(
       'Bekende dossierinformatie vraagt om terughoudende interpretatie van het profielbeeld en om afstemming tussen uitdaging en ondersteuning.'
-    );
-  }
-
-  if (profileBase.hasLimitedInput) {
-    interpretationSummaryParts.push(
-      'De huidige invoer is nog beperkt. Lees de uitkomst daarom als voorlopige werkhypothese.'
     );
   }
 
