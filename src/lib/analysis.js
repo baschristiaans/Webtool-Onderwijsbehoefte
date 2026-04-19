@@ -11,7 +11,7 @@ export const PROFILE_IDS = [
 
 export const PROFILE_DIRECTION_THRESHOLDS = {
   minimumTopScore: 6,
-  clearDifference: 2,
+  clearDifference: 3,
   cautiousDifference: 1
 };
 
@@ -69,7 +69,11 @@ function createEmptyProfileMap(initialValueFactory) {
   );
 }
 
-function resolveDirectionLabel(topScore, secondScore) {
+function resolveDirectionLabel(topScore, secondScore, topStatus) {
+  if (topStatus === 'insufficient') {
+    return 'nog onvoldoende richting';
+  }
+
   if (topScore < PROFILE_DIRECTION_THRESHOLDS.minimumTopScore) {
     return 'nog onvoldoende richting';
   }
@@ -177,6 +181,26 @@ function applyEligibilityAdjustments(scoresByProfile, evidenceFlags) {
   }
 }
 
+function buildEvidenceQuality(topProfile, secondProfile) {
+  const topEvidenceCount = topProfile.evidence.length;
+  const secondScore = secondProfile?.score ?? 0;
+  const scoreGap = topProfile.score - secondScore;
+
+  if (topProfile.status.status === 'insufficient') {
+    return 'low';
+  }
+
+  if (topProfile.score >= 8 && scoreGap >= 3 && topEvidenceCount >= 3) {
+    return 'high';
+  }
+
+  if (topProfile.score >= 5 && topEvidenceCount >= 2) {
+    return 'medium';
+  }
+
+  return 'low';
+}
+
 export function analyzeProfileBase(observationAnswers, contextInput = {}) {
   const rawScoresByProfile = createEmptyProfileMap(() => 0);
   const scoresByProfile = createEmptyProfileMap(() => 0);
@@ -267,6 +291,12 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
 
   const topProfile = sortedProfiles[0];
   const secondProfile = sortedProfiles[1];
+  const evidenceQuality = buildEvidenceQuality(topProfile, secondProfile);
+  const overlapDifference = topProfile.score - secondProfile.score;
+  const hasMeaningfulOverlap =
+    topProfile.score > 0 &&
+    secondProfile.score > 0 &&
+    overlapDifference <= PROFILE_DIRECTION_THRESHOLDS.clearDifference;
 
   return {
     scoreItems,
@@ -276,17 +306,18 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     profileStatusById,
     evidenceFlags,
     topProfileId: topProfile.profileId,
-    overlapProfileId:
-      topProfile.score > 0 &&
-      secondProfile.score > 0 &&
-      topProfile.score - secondProfile.score < PROFILE_DIRECTION_THRESHOLDS.clearDifference
-        ? secondProfile.profileId
-        : null,
-    profileDirectionLabel: resolveDirectionLabel(topProfile.score, secondProfile.score),
+    overlapProfileId: hasMeaningfulOverlap ? secondProfile.profileId : null,
+    profileDirectionLabel: resolveDirectionLabel(
+      topProfile.score,
+      secondProfile.score,
+      topProfile.status.status
+    ),
     topScore: topProfile.score,
     secondScore: secondProfile.score,
     contextSignals,
-    strongestObservations: topProfile.evidence.slice(0, 5)
+    strongestObservations: topProfile.evidence.slice(0, 5),
+    evidenceQuality,
+    overlapDifference
   };
 }
 
@@ -440,6 +471,12 @@ export function analyzeRichInterpretation({
   if (contextInput.knownSupportInfoPresence === 'yes') {
     interpretationSummaryParts.push(
       'Bekende dossierinformatie vraagt om terughoudende interpretatie van het profielbeeld en om afstemming tussen uitdaging en ondersteuning.'
+    );
+  }
+
+  if (profileBase.profileDirectionLabel === 'nog onvoldoende richting') {
+    interpretationSummaryParts.push(
+      'De huidige invoer is nog te beperkt of te verdeeld om een stevige profielrichting aan te wijzen.'
     );
   }
 

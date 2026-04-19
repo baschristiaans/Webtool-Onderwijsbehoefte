@@ -292,6 +292,30 @@ function applyProfileAreaGuards(areaScores, topProfileId) {
   }
 }
 
+function buildInterpretationPrefix(profileBase, topProfile, overlapProfile) {
+  if (profileBase.profileDirectionLabel === 'nog onvoldoende richting') {
+    return `De huidige observaties geven nog onvoldoende houvast voor een stevige profielrichting. ${normalizeText(
+      topProfile.shortTitle
+    )} lijkt voorlopig het meest passend, maar dit vraagt verdere verkenning.`;
+  }
+
+  if (profileBase.profileDirectionLabel === 'meerdere profielen liggen dicht bij elkaar' && overlapProfile) {
+    return `De observaties wijzen niet eenduidig in één richting. ${normalizeText(
+      topProfile.shortTitle
+    )} en ${normalizeText(overlapProfile.shortTitle).toLowerCase()} liggen dicht bij elkaar en moeten samen gelezen worden.`;
+  }
+
+  if (profileBase.profileDirectionLabel === 'voorzichtige profielrichting') {
+    return `De observaties wijzen voorzichtig in de richting van ${normalizeText(
+      topProfile.shortTitle
+    ).toLowerCase()}. Deze uitkomst vraagt terughoudende interpretatie.`;
+  }
+
+  return `De observaties wijzen vooral in de richting van ${normalizeText(
+    topProfile.shortTitle
+  ).toLowerCase()}.`;
+}
+
 export default function buildPersonalizedAdvice({
   profileBase,
   interpretation,
@@ -318,8 +342,8 @@ export default function buildPersonalizedAdvice({
   applyAnchorBoosts(areaScores, topProfile.id);
 
   const overlapDifference = profileBase.topScore - profileBase.secondScore;
-  const overlapIsTight = overlapProfile && overlapDifference <= 2;
-  const overlapIsRelevant = overlapProfile && overlapDifference <= 4;
+  const overlapIsTight = overlapProfile && overlapDifference <= 1;
+  const overlapIsRelevant = overlapProfile && overlapDifference <= 3;
 
   if (overlapIsRelevant) {
     PROFILE_PRIORITY_AREAS[overlapProfile.id].forEach((area, index) => {
@@ -419,19 +443,19 @@ export default function buildPersonalizedAdvice({
     };
   });
 
+  const intro = buildInterpretationPrefix(profileBase, topProfile, overlapProfile);
+
   let workHypothesis = topProfile.interpretation;
-  let shortInterpretation = `De observaties wijzen vooral in de richting van ${normalizeText(
-    topProfile.shortTitle
-  ).toLowerCase()} (${normalizeText(topProfile.title).toLowerCase()}).`;
+  let shortInterpretation = intro;
 
   if (profileBase.profileStatusById[topProfile.id]?.status === 'cautious') {
     shortInterpretation +=
-      ' Deze uitkomst vraagt terughoudende interpretatie en kan voorlopig alleen als signaleringsrichting worden gelezen.';
+      ' Deze uitkomst kan voorlopig alleen als signaleringsrichting worden gelezen.';
   }
 
   if (profileBase.profileStatusById[topProfile.id]?.status === 'insufficient') {
     shortInterpretation +=
-      ' Deze uitkomst is op basis van de huidige informatie nog onvoldoende onderbouwd als profielrichting.';
+      ' Op basis van de huidige informatie is deze richting nog onvoldoende onderbouwd.';
   }
 
   if (
@@ -440,13 +464,27 @@ export default function buildPersonalizedAdvice({
   ) {
     shortInterpretation +=
       ' Lees deze uitkomst in samenhang met bekende dossierinformatie; de tool stelt geen ondersteuningsbehoefte of diagnose vast.';
+  } else if (contextInput.knownSupportInfoPresence === 'yes') {
+    shortInterpretation +=
+      ' Bekende dossierinformatie moet als aanvullende nuance naast deze profielrichting gelezen worden.';
   }
 
-  const followUpSteps = [
-    'Bespreek de werkhypothese met collega’s of intern begeleider.',
-    'Kijk welke onderwijsaanpassingen direct in de klas uitgeprobeerd kunnen worden.',
+  const followUpSteps = [];
+
+  if (profileBase.profileDirectionLabel === 'nog onvoldoende richting') {
+    followUpSteps.push(
+      'Verzamel eerst meer observaties in verschillende lessen of situaties voordat je deze werkhypothese steviger gebruikt.'
+    );
+  } else {
+    followUpSteps.push('Bespreek de werkhypothese met collega’s of intern begeleider.');
+  }
+
+  followUpSteps.push(
+    'Kijk welke onderwijsaanpassingen direct in de klas uitgeprobeerd kunnen worden.'
+  );
+  followUpSteps.push(
     'Evalueer na een periode opnieuw of de gekozen aanpak het functioneren zichtbaar verandert.'
-  ];
+  );
 
   if (
     ['type1', 'type2', 'type6'].includes(topProfile.id) &&
@@ -459,10 +497,20 @@ export default function buildPersonalizedAdvice({
     );
   }
 
+  if (overlapProfile && profileBase.profileDirectionLabel !== 'nog onvoldoende richting') {
+    followUpSteps.push(
+      `Lees de uitkomst ook in samenhang met ${normalizeText(
+        overlapProfile.shortTitle
+      ).toLowerCase()}, omdat deze profielrichting dicht in de buurt ligt.`
+    );
+  }
+
   const caution =
     topProfile.id === 'type5'
       ? 'Type 5 wordt in deze tool alleen terughoudend gelezen. De tool signaleert patronen in schoolfunctioneren, maar stelt geen diagnose of oorzaak vast.'
-      : 'Deze uitkomst is een werkhypothese op basis van schoolse observaties en aanvullende contextinformatie. Het is geen diagnose.';
+      : profileBase.profileDirectionLabel === 'nog onvoldoende richting'
+        ? 'Deze uitkomst is nog te voorlopig om stevig te gebruiken als profielduiding. Zie het vooral als startpunt voor verdere observatie.'
+        : 'Deze uitkomst is een werkhypothese op basis van schoolse observaties en aanvullende contextinformatie. Het is geen diagnose.';
 
   const homeAttention =
     homeInput.pattern === 'contrast'
