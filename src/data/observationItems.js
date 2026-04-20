@@ -242,15 +242,14 @@ const observationItems = [
     profileIds: ['type5']
   },
   {
-    id: 'obs-strong-problem-solving',
-    domain: 'execution',
-    domainLabel: 'Uitvoering en leerproduct',
-    prompt:
-      'De leerling laat sterk probleemoplossend denken zien.',
-    category: 'supporting',
-    profileIds: ['type1', 'type2', 'type6']
-  },
-
+  id: 'obs-strong-problem-solving',
+  domain: 'execution',
+  domainLabel: 'Uitvoering en leerproduct',
+  prompt:
+    'De leerling laat sterk probleemoplossend denken zien.',
+  category: 'supporting',
+  profileIds: ['type2', 'type6']
+},
   {
     id: 'obs-seeks-extra-challenge',
     domain: 'self-direction',
