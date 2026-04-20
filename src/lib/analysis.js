@@ -38,6 +38,25 @@ const TYPE2_ANCHOR_ITEMS = [
   'obs-keeps-group-busy-low-challenge'
 ];
 
+/*
+  Type 5 mag nooit alleen uit observaties ontstaan.
+  Daarom gebruiken we type-5-signalen alleen als patroonversterkers
+  wanneer bekende relevante ondersteuningsinformatie aanwezig is.
+
+  Strakke keuze:
+  - Sterkte-indicator: alleen een duidelijke cognitieve sterkte
+  - Mismatch-/uitvoeringsindicatoren: signalen dat laten zien, organiseren
+    of uitvoeren achterblijft bij wat de leerling lijkt te kunnen
+*/
+const TYPE5_STRENGTH_ITEMS = ['obs-strong-problem-solving'];
+
+const TYPE5_EXECUTION_MISMATCH_ITEMS = [
+  'obs-unorganized-work',
+  'obs-work-quality-mismatch',
+  'obs-not-always-on-task',
+  'obs-oral-more-than-written'
+];
+
 export function normalizeText(text) {
   if (typeof text !== 'string') return text;
 
@@ -90,9 +109,31 @@ function createEvidenceFlags() {
     type5: {
       hasStrengthIndicator: false,
       hasExecutionMismatchIndicator: false,
-      hasKnownSupportInfoContext: false
+      hasKnownSupportInfoContext: false,
+      strengthIndicatorIds: [],
+      executionMismatchIds: []
     }
   };
+}
+
+function pushUnique(list, value) {
+  if (!list.includes(value)) {
+    list.push(value);
+  }
+}
+
+function updateType5EvidenceFlags(itemId, evidenceFlags) {
+  const flags = evidenceFlags.type5;
+
+  if (TYPE5_STRENGTH_ITEMS.includes(itemId)) {
+    flags.hasStrengthIndicator = true;
+    pushUnique(flags.strengthIndicatorIds, itemId);
+  }
+
+  if (TYPE5_EXECUTION_MISMATCH_ITEMS.includes(itemId)) {
+    flags.hasExecutionMismatchIndicator = true;
+    pushUnique(flags.executionMismatchIds, itemId);
+  }
 }
 
 function getPointKey(item) {
@@ -271,20 +312,7 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
       return;
     }
 
-    if (
-      item.id === 'obs-oral-more-than-written' ||
-      item.id === 'obs-work-quality-mismatch'
-    ) {
-      evidenceFlags.type5.hasStrengthIndicator = true;
-      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
-    }
-
-    if (
-      item.id === 'obs-unorganized-work' ||
-      item.id === 'obs-not-always-on-task'
-    ) {
-      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
-    }
+    updateType5EvidenceFlags(item.id, evidenceFlags);
 
     const pointKey = getPointKey(item);
     const points = CATEGORY_POINTS[pointKey][answerValue];

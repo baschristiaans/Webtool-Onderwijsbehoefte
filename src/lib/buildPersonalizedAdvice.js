@@ -293,6 +293,21 @@ function combineAdviceText(primaryText, overlapText, overlapShortTitle) {
   ).toLowerCase()}: ${overlapText}`;
 }
 
+function buildType5AccentAreaNames(overlapProfileId) {
+  if (!overlapProfileId || !(overlapProfileId in PROFILE_PRIORITY_AREAS)) return [];
+
+  return PROFILE_PRIORITY_AREAS[overlapProfileId].slice(0, 2);
+}
+
+function combineType5AccentText(primaryText, overlapText, overlapShortTitle) {
+  if (!overlapText) return primaryText || '';
+  if (!primaryText) return overlapText;
+
+  return `${primaryText} Aanvullend vraagt de overlap met ${normalizeText(
+    overlapShortTitle
+  ).toLowerCase()} hier ook om: ${overlapText}`;
+}
+
 function buildGenericNoSignalAdvice() {
   return {
     prioritizedNeeds: [
@@ -398,15 +413,20 @@ export default function buildPersonalizedAdvice({
   const overlapDifference = profileBase.topScore - profileBase.secondScore;
   const overlapIsTight = overlapProfile && overlapDifference <= 1;
   const overlapIsRelevant = overlapProfile && overlapDifference <= 3;
-  const useCombinedAdvice = Boolean(
-    overlapProfile && profileBase.directionKey === 'overlap'
-  );
+  const hasOverlapProfile = Boolean(overlapProfile && profileBase.directionKey === 'overlap');
+  const useLimitedType5Overlap = Boolean(hasOverlapProfile && topProfile.id === 'type5');
+  const useCombinedAdvice = Boolean(hasOverlapProfile && !useLimitedType5Overlap);
+  const type5AccentAreas = useLimitedType5Overlap
+    ? buildType5AccentAreaNames(overlapProfile?.id)
+    : [];
 
   if (overlapIsRelevant) {
     PROFILE_PRIORITY_AREAS[overlapProfile.id].forEach((area, index) => {
-      const contribution = overlapIsTight
-        ? [2, 2, 1, 1, 0][index] ?? 0
-        : [1, 1, 0, 0, 0][index] ?? 0;
+      const contribution = useLimitedType5Overlap
+        ? [1, 1, 0, 0, 0][index] ?? 0
+        : overlapIsTight
+          ? [2, 2, 1, 1, 0][index] ?? 0
+          : [1, 1, 0, 0, 0][index] ?? 0;
 
       areaScores[area] += contribution;
     });
@@ -462,6 +482,12 @@ export default function buildPersonalizedAdvice({
   const prioritizedNeeds = prioritizedAreaNames.map((area) => {
     const primaryNeed = topNeedMap[area] || overlapNeedMap[area];
     const overlapNeed = overlapNeedMap[area];
+    const hasType5Accent = Boolean(
+      useLimitedType5Overlap &&
+      overlapProfile &&
+      overlapNeed &&
+      type5AccentAreas.includes(area)
+    );
     const reasonParts = [
       useCombinedAdvice && overlapProfile
         ? `Gebaseerd op de gecombineerde werkhypothese van ${normalizeText(
@@ -493,6 +519,14 @@ export default function buildPersonalizedAdvice({
       );
     }
 
+    if (useLimitedType5Overlap && hasType5Accent && overlapProfile) {
+      reasonParts.push(
+        `De overlap met ${normalizeText(
+          overlapProfile.shortTitle
+        ).toLowerCase()} geeft op dit behoeftegebied aanvullende richting.`
+      );
+    }
+
     return {
       area,
       need:
@@ -502,7 +536,13 @@ export default function buildPersonalizedAdvice({
               overlapNeed?.need || '',
               overlapProfile.shortTitle
             )
-          : primaryNeed?.need || '',
+          : hasType5Accent && overlapProfile
+            ? combineType5AccentText(
+                primaryNeed?.need || '',
+                overlapNeed?.need || '',
+                overlapProfile.shortTitle
+              )
+            : primaryNeed?.need || '',
       advice:
         useCombinedAdvice && overlapProfile
           ? combineAdviceText(
@@ -510,9 +550,17 @@ export default function buildPersonalizedAdvice({
               overlapNeed?.advice || '',
               overlapProfile.shortTitle
             )
-          : primaryNeed?.advice || '',
+          : hasType5Accent && overlapProfile
+            ? combineType5AccentText(
+                primaryNeed?.advice || '',
+                overlapNeed?.advice || '',
+                overlapProfile.shortTitle
+              )
+            : primaryNeed?.advice || '',
       reason: reasonParts.join(' '),
-      sharedByOverlap: Boolean(useCombinedAdvice && overlapNeed)
+      sharedByOverlap: Boolean(
+        (useCombinedAdvice && overlapNeed) || hasType5Accent
+      )
     };
   });
 
@@ -525,6 +573,10 @@ export default function buildPersonalizedAdvice({
     workHypothesis = `${topProfile.interpretation} Daarnaast laat de overlap met ${normalizeText(
       overlapProfile.shortTitle
     ).toLowerCase()} zien dat ook deze lijn moet worden meegelezen: ${overlapProfile.interpretation}`;
+  } else if (useLimitedType5Overlap && overlapProfile) {
+    workHypothesis = `${topProfile.interpretation} Daarnaast laat het profielbeeld ook kenmerken zien die deels aansluiten bij ${normalizeText(
+      overlapProfile.shortTitle
+    ).toLowerCase()}. Die tweede lijn wordt in het advies alleen aanvullend gebruikt waar dat echt richting geeft.`;
   }
 
   if (
@@ -552,52 +604,57 @@ export default function buildPersonalizedAdvice({
         overlapProfile.shortTitle
       ).toLowerCase()}, en kijk welke combinatie het functioneren verbetert.`
     );
+  } else if (useLimitedType5Overlap && overlapProfile) {
+    followUpSteps.push(
+      `Gebruik ${normalizeText(
+        overlapProfile.shortTitle
+      ).toLowerCase()} alleen als aanvullende duidlijn naast type 5 en voorkom dat het tweede profiel de hoofdstructuur van het advies overneemt.`
+    );
   } else {
     followUpSteps.push(
-      'Kijk welke onderwijsaanpassingen direct in de klas uitgeprobeerd kunnen worden.'
+      'Kies één of twee concrete onderwijsaanpassingen en kijk in de komende periode wat dat zichtbaar verandert in betrokkenheid, taakaanpak en leerproduct.'
     );
   }
 
-  followUpSteps.push(
-    'Evalueer na een periode opnieuw welke aanpassingen merkbaar effect hebben op betrokkenheid, uitvoering en leerontwikkeling.'
-  );
-
-  if (
-    ['type1', 'type2', 'type6'].includes(topProfile.id) &&
-    interpretation.discrepancySignals.some((signal) =>
-      signal.toLowerCase().includes('lagere of wisselende resultaten')
-    )
-  ) {
+  if (topProfile.id === 'type5') {
     followUpSteps.push(
-      'Verken waardoor lagere of wisselende prestaties ontstaan voordat hier verdere conclusies aan worden verbonden.'
+      'Werk aan bredere beeldvorming: onderzoek in samenhang hoe sterke cognitieve kanten, uitvoeringsproblemen, bestaande ondersteuningsinformatie en schoolprestaties over tijd zich tot elkaar verhouden.'
     );
-  }
-
-  if (useCombinedAdvice && overlapProfile) {
     followUpSteps.push(
-      'Gebruik de overlap niet als twijfelboodschap, maar als aanwijzing dat meerdere profielkenmerken tegelijk aandacht vragen.'
+      'Betrek ouders, intern begeleider en waar nodig aanvullende specialistische expertise; deze werkhypothese vervangt geen nadere beeldvorming.'
     );
   }
 
-  const caution =
-    topProfile.id === 'type5' || overlapProfile?.id === 'type5'
-      ? 'Type 5 wordt in deze tool alleen als werkhypothese meegenomen wanneer er naast uitvoeringssignalen ook bekende relevante ondersteuningsinformatie is ingevuld. De uitkomst blijft een duiding van schoolfunctioneren, geen diagnose.'
-      : 'Deze uitkomst is een werkhypothese op basis van schoolse observaties en aanvullende contextinformatie. Het is geen diagnose.';
+  if (homeInput.pattern === 'contrast') {
+    followUpSteps.push(
+      'Neem het contrast tussen thuis en school expliciet mee in de vervolgbespreking.'
+    );
+  }
 
-  const homeAttention =
-    homeInput.pattern === 'contrast'
-      ? 'Het schoolbeeld contrasteert met de thuissituatie; neem dit verschil expliciet mee in verdere duiding.'
-      : '';
+  let caution =
+    'Deze uitkomst is een werkhypothese op basis van observaties, context en ingevulde aanvullende informatie. De tool ondersteunt duiding en vervangt geen professionele beeldvorming.';
+
+  if (topProfile.id === 'type5') {
+    caution =
+      'Deze uitkomst is een werkhypothese op basis van schoolse signalen en bekende ondersteuningsinformatie. Bij type 5 is nadere brede beeldvorming belangrijk; de tool ondersteunt die duiding maar vervangt die niet.';
+  }
+
+  let homeAttention = '';
+
+  if (homeInput.pattern === 'contrast') {
+    homeAttention =
+      'De thuissituatie contrasteert met het schoolbeeld. Dat verschil verdient expliciete aandacht in de interpretatie en vervolgstappen.';
+  } else if (homeInput.pattern === 'match') {
+    homeAttention =
+      'Het thuissignaal bevestigt het schoolbeeld grotendeels. Dat maakt de huidige werkhypothese consistenter, maar niet definitief.';
+  }
 
   const resultHeading =
-    useCombinedAdvice && overlapProfile
-      ? `${normalizeText(topProfile.shortTitle)} + ${normalizeText(overlapProfile.shortTitle)}`
-      : `${normalizeText(topProfile.shortTitle)} - ${normalizeText(topProfile.title)}`;
-
-  const resultLabel =
-    useCombinedAdvice && overlapProfile
-      ? 'Gecombineerde werkhypothese'
-      : 'Best passende profielrichting';
+    profileBase.directionKey === 'overlap' && overlapProfile
+      ? `${normalizeText(topProfile.shortTitle)} met aanvullende lijn vanuit ${normalizeText(
+          overlapProfile.shortTitle
+        )}`
+      : normalizeText(topProfile.shortTitle);
 
   return {
     prioritizedNeeds,
@@ -607,7 +664,7 @@ export default function buildPersonalizedAdvice({
     caution,
     homeAttention,
     resultHeading,
-    resultLabel,
+    resultLabel: 'Werkhypothese',
     useCombinedAdvice
   };
 }
