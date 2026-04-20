@@ -34,10 +34,6 @@ const ZOOV_OPTIONS = [
 const SETTING_OPTIONS = [
   { value: 'unknown', label: 'Niet ingevuld' },
   {
-    value: 'De leerling laat in een kleiner of veiliger verband meer zien dan in de hele groep.',
-    label: 'Laat in klein of veilig verband meer zien'
-  },
-  {
     value: 'Het zichtbare functioneren verschilt sterk per les, taak of setting.',
     label: 'Functioneren verschilt sterk per setting'
   }
@@ -298,13 +294,12 @@ function App() {
     () =>
       analyzeRichInterpretation({
         profileBase,
-        zoovSignal,
         contextInput,
         homeInput,
         testScores,
         notes
       }),
-    [profileBase, zoovSignal, contextInput, homeInput, testScores, notes]
+    [profileBase, contextInput, homeInput, testScores, notes]
   );
 
   const scoreOverview = useMemo(

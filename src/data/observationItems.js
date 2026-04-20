@@ -2,7 +2,7 @@ export const OBSERVATION_SCORE_OPTIONS = [
   { value: 0, label: 'Niet waargenomen' },
   { value: 1, label: 'Soms zichtbaar' },
   { value: 2, label: 'Regelmatig zichtbaar' },
-  { value: 3, label: 'Duidelijk zichtbaar' }
+  { value: 3, label: 'Duidelijk en consistent zichtbaar' }
 ];
 
 const observationItems = [
@@ -25,7 +25,7 @@ const observationItems = [
     profileIds: ['type1']
   },
   {
-    id: 'obs-avoids-harder-task',
+    id: 'obs-does-not-do-more-than-asked',
     domain: 'task-approach',
     domainLabel: 'Taakaanpak en leerhouding',
     prompt:
@@ -66,8 +66,17 @@ const observationItems = [
     domain: 'response-challenge',
     domainLabel: 'Reactie op aanbod en uitdaging',
     prompt:
-      'De leerling houdt de leerkracht of de groep bezig wanneer er te weinig uitdaging is.',
+      'De leerling raakt gemakkelijk in discussie over de opdracht, waardoor de taak soms naar de achtergrond schuift.',
     category: 'core',
+    profileIds: ['type2']
+  },
+  {
+    id: 'obs-keeps-group-busy-low-challenge',
+    domain: 'response-challenge',
+    domainLabel: 'Reactie op aanbod en uitdaging',
+    prompt:
+      'De leerling houdt de leerkracht of de groep bezig wanneer er te weinig uitdaging is.',
+    category: 'supporting',
     profileIds: ['type2']
   },
 
@@ -136,7 +145,16 @@ const observationItems = [
     profileIds: ['type2', 'type4']
   },
   {
-    id: 'obs-better-with-trusted-adult',
+    id: 'obs-better-with-trusted-guide',
+    domain: 'engagement',
+    domainLabel: 'Betrokkenheid en schoolverbinding',
+    prompt:
+      'De leerling werkt merkbaar beter wanneer een vertrouwde leerkracht of begeleider dichtbij is.',
+    category: 'supporting',
+    profileIds: ['type4']
+  },
+  {
+    id: 'obs-more-energy-outside-school',
     domain: 'engagement',
     domainLabel: 'Betrokkenheid en schoolverbinding',
     prompt:
@@ -146,7 +164,7 @@ const observationItems = [
   },
 
   {
-    id: 'obs-planning-organization',
+    id: 'obs-unorganized-work',
     domain: 'execution',
     domainLabel: 'Uitvoering en leerproduct',
     prompt:
@@ -155,7 +173,7 @@ const observationItems = [
     profileIds: ['type5']
   },
   {
-    id: 'obs-written-less-than-thinking',
+    id: 'obs-oral-more-than-written',
     domain: 'execution',
     domainLabel: 'Uitvoering en leerproduct',
     prompt:
@@ -164,7 +182,7 @@ const observationItems = [
     profileIds: ['type5']
   },
   {
-    id: 'obs-inconsistent-quality',
+    id: 'obs-not-always-on-task',
     domain: 'execution',
     domainLabel: 'Uitvoering en leerproduct',
     prompt:
@@ -173,7 +191,7 @@ const observationItems = [
     profileIds: ['type5']
   },
   {
-    id: 'obs-strong-insight-weak-product',
+    id: 'obs-work-quality-mismatch',
     domain: 'execution',
     domainLabel: 'Uitvoering en leerproduct',
     prompt:
@@ -188,7 +206,7 @@ const observationItems = [
     prompt:
       'De leerling laat sterk probleemoplossend denken zien.',
     category: 'supporting',
-    profileIds: ['type5']
+    profileIds: ['type1', 'type2', 'type6']
   },
 
   {
@@ -205,7 +223,7 @@ const observationItems = [
     domain: 'self-direction',
     domainLabel: 'Zelfsturing en ambitie',
     prompt:
-      'De leerling werkt zelfstandig zonder bevestiging te zoeken.',
+      'De leerling stelt zelf doelen of bewaakt zichtbaar de eigen voortgang.',
     category: 'core',
     profileIds: ['type6']
   },
@@ -227,7 +245,25 @@ const observationItems = [
     category: 'core',
     profileIds: ['type6']
   },
+  {
+    id: 'obs-works-independently-without-confirmation',
+    domain: 'self-direction',
+    domainLabel: 'Zelfsturing en ambitie',
+    prompt:
+      'De leerling werkt zelfstandig zonder bevestiging te zoeken.',
+    category: 'core',
+    profileIds: ['type6']
+  },
 
+  {
+    id: 'ctx-small-group-stronger',
+    domain: 'school-context',
+    domainLabel: 'Contextsignalen in school',
+    prompt:
+      'De leerling laat in een klein groepje of in een veiligere setting meer zien dan in de hele groep.',
+    category: 'context',
+    profileIds: ['type3']
+  },
   {
     id: 'ctx-peer-match-helps',
     domain: 'school-context',
@@ -236,15 +272,6 @@ const observationItems = [
       'De leerling functioneert sterker wanneer hij of zij samenwerkt met cognitief of inhoudelijk passende peers.',
     category: 'context',
     profileIds: ['type3', 'type6']
-  },
-  {
-    id: 'ctx-oral-written-gap',
-    domain: 'school-context',
-    domainLabel: 'Contextsignalen in school',
-    prompt:
-      'De leerling laat in gesprek of mondeling meer zien dan in schriftelijk werk.',
-    category: 'context',
-    profileIds: ['type5']
   }
 ];
 

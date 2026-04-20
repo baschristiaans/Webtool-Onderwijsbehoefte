@@ -98,11 +98,6 @@ const CONTEXT_SIGNAL_AREA_WEIGHTS = {
   },
   'ctx-peer-match-helps': {
     Groepsgenoten: 1
-  },
-  'ctx-oral-written-gap': {
-    Instructie: 3,
-    Leeractiviteiten: 2,
-    Feedback: 2
   }
 };
 
@@ -110,9 +105,7 @@ const CONTEXT_SIGNAL_REASON_TEXT = {
   'ctx-small-group-stronger':
     'De leerling laat in een kleinere of veiligere setting meer zien.',
   'ctx-peer-match-helps':
-    'De leerling functioneert sterker bij cognitief of inhoudelijk passende peers.',
-  'ctx-oral-written-gap':
-    'De leerling laat in gesprek meer zien dan in schriftelijk werk.'
+    'De leerling functioneert sterker bij cognitief of inhoudelijk passende peers.'
 };
 
 function unique(items) {
@@ -253,14 +246,6 @@ function buildPrioritizedAreaNames(areaScores, activeContextSignals, topProfileI
 }
 
 function applyStep3Boosts(areaScores, contextInput) {
-  if (
-    contextInput.settingDifference ===
-    'De leerling laat in een kleiner of veiliger verband meer zien dan in de hele groep.'
-  ) {
-    areaScores.Leeromgeving += 2;
-    areaScores.Feedback += 1;
-  }
-
   if (
     contextInput.settingDifference ===
     'Het zichtbare functioneren verschilt sterk per les, taak of setting.'

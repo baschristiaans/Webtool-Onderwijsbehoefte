@@ -1,4 +1,4 @@
- import observationItems from '../data/observationItems.js';
+import observationItems from '../data/observationItems.js';
 
 export const PROFILE_IDS = [
   'type1',
@@ -34,7 +34,8 @@ const TEST_LEVEL_MAP = {
 const TYPE2_ANCHOR_ITEMS = [
   'obs-critical-rules',
   'obs-original-ideas',
-  'obs-discussion-overtakes-task'
+  'obs-discussion-overtakes-task',
+  'obs-keeps-group-busy-low-challenge'
 ];
 
 export function normalizeText(text) {
@@ -109,7 +110,8 @@ function applyContraIndicators(scoresByProfile, observationAnswers) {
     'obs-seeks-extra-challenge',
     'obs-sets-goals',
     'obs-uses-errors-for-learning',
-    'obs-sustains-challenging-task'
+    'obs-sustains-challenging-task',
+    'obs-works-independently-without-confirmation'
   ];
 
   const strongType6Count = strongType6Items.filter(
@@ -266,25 +268,20 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
         strength: answerValue,
         linkedProfiles: item.profileIds
       });
-
-      if (item.id === 'ctx-oral-written-gap') {
-        evidenceFlags.type5.hasExecutionMismatchIndicator = true;
-      }
-
       return;
     }
 
     if (
-      item.id === 'obs-written-less-than-thinking' ||
-      item.id === 'obs-strong-insight-weak-product'
+      item.id === 'obs-oral-more-than-written' ||
+      item.id === 'obs-work-quality-mismatch'
     ) {
       evidenceFlags.type5.hasStrengthIndicator = true;
       evidenceFlags.type5.hasExecutionMismatchIndicator = true;
     }
 
     if (
-      item.id === 'obs-planning-organization' ||
-      item.id === 'obs-inconsistent-quality'
+      item.id === 'obs-unorganized-work' ||
+      item.id === 'obs-not-always-on-task'
     ) {
       evidenceFlags.type5.hasExecutionMismatchIndicator = true;
     }
