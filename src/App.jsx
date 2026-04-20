@@ -1,13 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import profiles from './data/profiles.js';
+import observationItems, {
+  OBSERVATION_SCORE_OPTIONS
+} from './data/observationItems.js';
+import {
+  analyzeProfileBase,
+  analyzeRichInterpretation,
+  buildProfileScoreOverview,
+  normalizeText
+} from './lib/analysis.js';
+import buildPersonalizedAdvice from './lib/buildPersonalizedAdvice.js';
 import {
   buildTrackingPayload,
   createSessionId,
   saveTrackingRecord
 } from './lib/tracking.js';
-import profiles from './data/profiles.js';
-import observationItems, { OBSERVATION_SCORE_OPTIONS } from './data/observationItems.js';
-import { analyzeProfileBase, analyzeRichInterpretation, buildProfileScoreOverview, normalizeText } from './lib/analysis.js';
-import buildPersonalizedAdvice from './lib/buildPersonalizedAdvice.js';
 
 const TEST_OPTIONS = [
   { value: 'unknown', label: 'Niet ingevuld' },
@@ -258,6 +265,8 @@ function buildExportText({
 
 function App() {
   const profilesById = useMemo(buildProfilesById, []);
+  const sessionId = useMemo(() => createSessionId(), []);
+  const lastTrackedSignatureRef = useRef(null);
 
   const [student, setStudent] = useState(STUDENT_INITIAL);
   const [zoovSignal, setZoovSignal] = useState(ZOOV_INITIAL);
@@ -289,12 +298,13 @@ function App() {
     () =>
       analyzeRichInterpretation({
         profileBase,
+        zoovSignal,
         contextInput,
         homeInput,
         testScores,
         notes
       }),
-    [profileBase, contextInput, homeInput, testScores, notes]
+    [profileBase, zoovSignal, contextInput, homeInput, testScores, notes]
   );
 
   const scoreOverview = useMemo(
@@ -313,35 +323,36 @@ function App() {
       }),
     [profileBase, interpretation, profilesById, contextInput, homeInput]
   );
-const trackingSignature = useMemo(
-  () =>
-    JSON.stringify({
-      topProfileId: profileBase.topProfileId,
-      overlapProfileId: profileBase.overlapProfileId,
-      directionKey: profileBase.directionKey,
-      topScore: profileBase.topScore,
-      secondScore: profileBase.secondScore,
+
+  const trackingSignature = useMemo(
+    () =>
+      JSON.stringify({
+        topProfileId: profileBase.topProfileId,
+        overlapProfileId: profileBase.overlapProfileId,
+        directionKey: profileBase.directionKey,
+        topScore: profileBase.topScore,
+        secondScore: profileBase.secondScore,
+        observationAnswers,
+        contextInput,
+        homeInput,
+        testScores
+      }),
+    [
+      profileBase.topProfileId,
+      profileBase.overlapProfileId,
+      profileBase.directionKey,
+      profileBase.topScore,
+      profileBase.secondScore,
       observationAnswers,
       contextInput,
       homeInput,
       testScores
-    }),
-  [
-    profileBase.topProfileId,
-    profileBase.overlapProfileId,
-    profileBase.directionKey,
-    profileBase.topScore,
-    profileBase.secondScore,
-    observationAnswers,
-    contextInput,
-    homeInput,
-    testScores
-  ]
-);
+    ]
+  );
+
   const bestProfile = profileBase.topProfileId
     ? profilesById[profileBase.topProfileId]
     : null;
-
   const overlapProfile = profileBase.overlapProfileId
     ? profilesById[profileBase.overlapProfileId]
     : null;
@@ -404,12 +415,41 @@ const trackingSignature = useMemo(
         setIsProfileModalOpen(false);
       }
     };
-useEffect(() => {
-  if (currentStepConfig?.key !== 'results') return;
-  if (!profileBase.topProfileId && profileBase.directionKey !== 'no_signal') return;
-  if (lastTrackedSignatureRef.current === trackingSignature) return;
 
-  const payload = buildTrackingPayload({
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isProfileModalOpen]);
+
+  useEffect(() => {
+    if (currentStepConfig?.key !== 'results') return;
+    if (!profileBase.topProfileId && profileBase.directionKey !== 'no_signal') return;
+    if (lastTrackedSignatureRef.current === trackingSignature) return;
+
+    const payload = buildTrackingPayload({
+      sessionId,
+      student,
+      zoovSignal,
+      contextInput,
+      homeInput,
+      testScores,
+      observationAnswers,
+      profileBase,
+      interpretation,
+      advice
+    });
+
+    saveTrackingRecord(payload)
+      .then((result) => {
+        if (result.ok || result.skipped) {
+          lastTrackedSignatureRef.current = trackingSignature;
+        }
+      })
+      .catch((error) => {
+        console.error('Opslaan van tool_run mislukt:', error);
+      });
+  }, [
+    currentStepConfig?.key,
+    trackingSignature,
     sessionId,
     student,
     zoovSignal,
@@ -420,34 +460,7 @@ useEffect(() => {
     profileBase,
     interpretation,
     advice
-  });
-
-  saveTrackingRecord(payload)
-    .then((result) => {
-      if (result.ok || result.skipped) {
-        lastTrackedSignatureRef.current = trackingSignature;
-      }
-    })
-    .catch((error) => {
-      console.error('Opslaan van tool_run mislukt:', error);
-    });
-}, [
-  currentStepConfig?.key,
-  trackingSignature,
-  sessionId,
-  student,
-  zoovSignal,
-  contextInput,
-  homeInput,
-  testScores,
-  observationAnswers,
-  profileBase,
-  interpretation,
-  advice
-]);
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [isProfileModalOpen]);
+  ]);
 
   const handleStudentChange = (field, value) => {
     setStudent((current) => ({ ...current, [field]: value }));
@@ -489,8 +502,8 @@ useEffect(() => {
     setCurrentObservationIndex(0);
     setIsChecklistConfirmed(false);
     setIsDisclaimerConfirmed(false);
+    lastTrackedSignatureRef.current = null;
   };
-  lastTrackedSignatureRef.current = null;
 
   const handleExport = () => {
     const exportText = buildExportText({
@@ -506,7 +519,6 @@ useEffect(() => {
       profilesById,
       notes
     });
-
     const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1045,7 +1057,7 @@ useEffect(() => {
             <strong>Belangrijke kanttekening</strong>
             <p>
               Deze tool ondersteunt bij profielduiding en onderwijsafstemming.
-              De uitkomst is een werkhypothese en geen diagnose of classificatie.
+              De uitkomst is een werkhypothese en geen diagnostische tool.
             </p>
           </div>
 
@@ -1065,16 +1077,33 @@ useEffect(() => {
   }
 
   function renderResultsStep() {
+    if (!bestProfile && profileBase.directionKey !== 'no_signal') {
+      return (
+        <article className="panel caution-panel">
+          <p className="section-label">Uitkomst</p>
+          <p>Er is nog geen profieluitkomst beschikbaar.</p>
+        </article>
+      );
+    }
+
     return (
       <div className="output-column">
         <article className="panel result-panel">
           <div className="panel-head">
             <div>
               <p className="section-label">Profielbeeld</p>
-              <h2>{advice.resultHeading}</h2>
-              <p className="helper-text">{advice.resultLabel}</p>
+              <h2>
+                {bestProfile
+                  ? formatProfileHeading(bestProfile)
+                  : advice.resultHeading}
+              </h2>
+              {bestProfile && (
+                <p className="helper-text">
+                  {profileBase.profileStatusById[bestProfile.id]?.label}
+                </p>
+              )}
             </div>
-            {bestProfile ? (
+            {bestProfile && (
               <button
                 type="button"
                 className="info-button"
@@ -1083,9 +1112,8 @@ useEffect(() => {
               >
                 ?
               </button>
-            ) : null}
+            )}
           </div>
-
           {overlapProfile && (
             <div className="meta-pills">
               <span className="pill subtle-pill">
@@ -1110,6 +1138,7 @@ useEffect(() => {
                 <div>
                   <strong>{item.shortTitle}</strong>
                   <span>{item.title}</span>
+                  <small>{item.status.label}</small>
                 </div>
                 <strong>{item.score}</strong>
               </div>
@@ -1133,9 +1162,7 @@ useEffect(() => {
               ))}
             </ul>
           ) : (
-            <p className="helper-text">
-              Nog geen aanvullende signalen ingevuld.
-            </p>
+            <p className="helper-text">Nog geen aanvullende signalen ingevuld.</p>
           )}
         </article>
 
@@ -1149,7 +1176,8 @@ useEffect(() => {
             </ul>
           ) : (
             <p className="helper-text">
-              Op basis van de huidige invoer zijn er nog geen expliciete discrepantiesignalen zichtbaar.
+              Op basis van de huidige invoer zijn er nog geen expliciete
+              discrepantiesignalen zichtbaar.
             </p>
           )}
         </article>
@@ -1285,15 +1313,16 @@ useEffect(() => {
               </button>
 
               <div className="wizard-status">
-                {currentStepConfig.key !== 'review' && currentStepConfig.key !== 'results' && (
-                  <span className="helper-text">
-                    {canGoNext
-                      ? currentStepConfig.key === 'observations'
-                        ? 'Je kunt doorgaan naar de volgende vraag.'
-                        : 'Je kunt doorgaan naar de volgende stap.'
-                      : 'Vul eerst de benodigde informatie in om verder te gaan.'}
-                  </span>
-                )}
+                {currentStepConfig.key !== 'review' &&
+                  currentStepConfig.key !== 'results' && (
+                    <span className="helper-text">
+                      {canGoNext
+                        ? currentStepConfig.key === 'observations'
+                          ? 'Je kunt doorgaan naar de volgende vraag.'
+                          : 'Je kunt doorgaan naar de volgende stap.'
+                        : 'Vul eerst de benodigde informatie in om verder te gaan.'}
+                    </span>
+                  )}
               </div>
 
               <button
@@ -1329,7 +1358,8 @@ useEffect(() => {
                 <p className="section-label">Profieluitleg</p>
                 <h2>{formatProfileHeading(bestProfile)}</h2>
                 <p className="helper-text">
-                  Dit profiel helpt bij het begrijpen van het zichtbare functioneren in school. Het is geen diagnose.
+                  Dit profiel helpt bij het begrijpen van het zichtbare functioneren
+                  in school. Het is geen diagnose.
                 </p>
               </div>
               <button
@@ -1365,8 +1395,9 @@ useEffect(() => {
               <div className="modal-section">
                 <strong>Contextnoot</strong>
                 <p>
-                  Dossierinformatie, thuissituatie, toetsgegevens en verschillen tussen settings kunnen dit
-                  profielbeeld versterken of nuanceren, maar tellen niet mee in de ruwe profielscore.
+                  Dossierinformatie, thuissituatie, toetsgegevens en verschillen
+                  tussen settings kunnen dit profielbeeld versterken of nuanceren,
+                  maar tellen niet mee in de ruwe profielscore.
                 </p>
               </div>
             </div>
