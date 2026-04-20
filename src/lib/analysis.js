@@ -1,4 +1,4 @@
-import observationItems from '../data/observationItems';
+ import observationItems from '../data/observationItems.js';
 
 export const PROFILE_IDS = [
   'type1',

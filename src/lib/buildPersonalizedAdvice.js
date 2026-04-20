@@ -1,4 +1,4 @@
-import { normalizeText } from './analysis';
+import { normalizeText } from './analysis.js';
 
 const PROFILE_PRIORITY_AREAS = {
   type1: [

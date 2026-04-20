@@ -1,15 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import profiles from './data/profiles';
-import observationItems, {
-  OBSERVATION_SCORE_OPTIONS
-} from './data/observationItems';
-import {
-  analyzeProfileBase,
-  analyzeRichInterpretation,
-  buildProfileScoreOverview,
-  normalizeText
-} from './lib/analysis';
-import buildPersonalizedAdvice from './lib/buildPersonalizedAdvice';
+import profiles from './data/profiles.js';
+import observationItems, { OBSERVATION_SCORE_OPTIONS } from './data/observationItems.js';
+import { analyzeProfileBase, analyzeRichInterpretation, buildProfileScoreOverview, normalizeText } from './lib/analysis.js';
+import buildPersonalizedAdvice from './lib/buildPersonalizedAdvice.js';
 
 const TEST_OPTIONS = [
   { value: 'unknown', label: 'Niet ingevuld' },
