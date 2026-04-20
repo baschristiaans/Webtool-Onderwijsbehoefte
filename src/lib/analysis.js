@@ -57,6 +57,23 @@ const TYPE5_EXECUTION_MISMATCH_ITEMS = [
   'obs-oral-more-than-written'
 ];
 
+/*
+  Nieuwe activatielogica voor type 1, 2, 3, 4 en 6:
+  Een profiel is pas regulier wanneer er voldoende profielspecifieke evidentie is.
+
+  Route A:
+  - minstens één unieke core-observatie op sterkte 3
+
+  Route B:
+  - minstens twee waargenomen profielitems
+  - minstens één core-item
+  - minstens één core-item op sterkte 2 of 3
+
+  Dit voorkomt dat één los algemeen of gedeeld signaal te snel
+  een profieluitkomst forceert.
+*/
+const NON_TYPE5_MIN_SCORE = 2;
+
 export function normalizeText(text) {
   if (typeof text !== 'string') return text;
 
@@ -189,13 +206,59 @@ function applyType2AnchorRule(scoresByProfile, observationAnswers) {
   }
 }
 
-function validateProfileEligibility(profileId, evidenceFlags, score) {
-  if (profileId !== 'type5') {
-    return {
-      status: 'regular'
-    };
+function summarizeEvidenceForProfile(evidenceItems) {
+  const observedItemCount = evidenceItems.length;
+  const observedCoreCount = evidenceItems.filter(
+    (item) => item.category === 'core'
+  ).length;
+  const strongCoreCount = evidenceItems.filter(
+    (item) => item.category === 'core' && item.strength >= 2
+  ).length;
+  const veryStrongUniqueCoreCount = evidenceItems.filter(
+    (item) =>
+      item.category === 'core' &&
+      item.distinction === 'unique' &&
+      item.strength >= 3
+  ).length;
+
+  return {
+    observedItemCount,
+    observedCoreCount,
+    strongCoreCount,
+    veryStrongUniqueCoreCount
+  };
+}
+
+function buildEvidenceSummaryByProfile(supportingObservationsByProfile) {
+  return Object.fromEntries(
+    PROFILE_IDS.map((profileId) => [
+      profileId,
+      summarizeEvidenceForProfile(supportingObservationsByProfile[profileId] || [])
+    ])
+  );
+}
+
+function validateNonType5Eligibility(evidenceSummary, score) {
+  if (score < NON_TYPE5_MIN_SCORE) {
+    return { status: 'insufficient' };
   }
 
+  if (evidenceSummary.veryStrongUniqueCoreCount >= 1) {
+    return { status: 'regular' };
+  }
+
+  if (
+    evidenceSummary.observedItemCount >= 2 &&
+    evidenceSummary.observedCoreCount >= 1 &&
+    evidenceSummary.strongCoreCount >= 1
+  ) {
+    return { status: 'regular' };
+  }
+
+  return { status: 'insufficient' };
+}
+
+function validateType5Eligibility(evidenceFlags, score) {
   const flags = evidenceFlags.type5;
 
   if (
@@ -204,28 +267,26 @@ function validateProfileEligibility(profileId, evidenceFlags, score) {
     flags.hasExecutionMismatchIndicator &&
     score >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score
   ) {
-    return {
-      status: 'regular'
-    };
+    return { status: 'regular' };
   }
 
-  return {
-    status: 'insufficient'
-  };
+  return { status: 'insufficient' };
 }
 
-function applyEligibilityAdjustments(scoresByProfile, evidenceFlags) {
-  const flags = evidenceFlags.type5;
-
-  const type5Eligible =
-    flags.hasKnownSupportInfoContext &&
-    flags.hasStrengthIndicator &&
-    flags.hasExecutionMismatchIndicator &&
-    scoresByProfile.type5 >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score;
-
-  if (!type5Eligible) {
-    scoresByProfile.type5 = 0;
+function validateProfileEligibility(profileId, evidenceFlags, evidenceSummary, score) {
+  if (profileId === 'type5') {
+    return validateType5Eligibility(evidenceFlags, score);
   }
+
+  return validateNonType5Eligibility(evidenceSummary, score);
+}
+
+function applyEligibilityAdjustments(scoresByProfile, profileStatusById) {
+  PROFILE_IDS.forEach((profileId) => {
+    if (profileStatusById[profileId]?.status !== 'regular') {
+      scoresByProfile[profileId] = 0;
+    }
+  });
 }
 
 function buildEvidenceQuality(topProfile, secondProfile) {
@@ -334,12 +395,34 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
 
   applyContraIndicators(scoresByProfile, observationAnswers);
   applyType2AnchorRule(scoresByProfile, observationAnswers);
-  applyEligibilityAdjustments(scoresByProfile, evidenceFlags);
+
+  const evidenceSummaryByProfile = buildEvidenceSummaryByProfile(
+    supportingObservationsByProfile
+  );
+
+  const initialProfileStatusById = Object.fromEntries(
+    PROFILE_IDS.map((profileId) => [
+      profileId,
+      validateProfileEligibility(
+        profileId,
+        evidenceFlags,
+        evidenceSummaryByProfile[profileId],
+        scoresByProfile[profileId]
+      )
+    ])
+  );
+
+  applyEligibilityAdjustments(scoresByProfile, initialProfileStatusById);
 
   const profileStatusById = Object.fromEntries(
     PROFILE_IDS.map((profileId) => [
       profileId,
-      validateProfileEligibility(profileId, evidenceFlags, scoresByProfile[profileId])
+      validateProfileEligibility(
+        profileId,
+        evidenceFlags,
+        evidenceSummaryByProfile[profileId],
+        scoresByProfile[profileId]
+      )
     ])
   );
 
@@ -415,6 +498,7 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     sortedProfiles,
     profileStatusById,
     evidenceFlags,
+    evidenceSummaryByProfile,
     positiveObservationCount,
     hasNoProfileSignal,
     hasMeaningfulOverlap: Boolean(overlapProfile),
