@@ -29,7 +29,7 @@ const observationItems = [
     domain: 'task-approach',
     domainLabel: 'Taakaanpak en leerhouding',
     prompt:
-      'De leerling kiest niet snel uit zichzelf voor een moeilijkere taak wanneer de basis al lukt.',
+      'De leerling doet niet meer dan gevraagd wordt.',
     category: 'supporting',
     profileIds: ['type1']
   },
@@ -66,7 +66,7 @@ const observationItems = [
     domain: 'response-challenge',
     domainLabel: 'Reactie op aanbod en uitdaging',
     prompt:
-      'De leerling raakt gemakkelijk in discussie over de opdracht, waardoor de taak soms naar de achtergrond schuift.',
+      'De leerling houdt de leerkracht of de groep bezig wanneer er te weinig uitdaging is.',
     category: 'core',
     profileIds: ['type2']
   },
@@ -104,7 +104,7 @@ const observationItems = [
     domain: 'engagement',
     domainLabel: 'Betrokkenheid en schoolverbinding',
     prompt:
-      'De leerling reageert afwerend of oppositioneel op schoolwerk.',
+      'De leerling laat weerstand zien bij schoolwerk.',
     category: 'supporting',
     profileIds: ['type4']
   },
@@ -140,7 +140,7 @@ const observationItems = [
     domain: 'engagement',
     domainLabel: 'Betrokkenheid en schoolverbinding',
     prompt:
-      'De leerling werkt merkbaar beter wanneer een vertrouwde volwassene nabij of beschikbaar is.',
+      'De leerling steekt zichtbaar meer energie in buitenschoolse interesses dan in schooltaken.',
     category: 'supporting',
     profileIds: ['type4']
   },
@@ -150,7 +150,7 @@ const observationItems = [
     domain: 'execution',
     domainLabel: 'Uitvoering en leerproduct',
     prompt:
-      'De leerling heeft zichtbaar moeite met planning of werkorganisatie.',
+      'De leerling is ongeorganiseerd in het werk.',
     category: 'core',
     profileIds: ['type5']
   },
@@ -159,7 +159,7 @@ const observationItems = [
     domain: 'execution',
     domainLabel: 'Uitvoering en leerproduct',
     prompt:
-      'In schriftelijke uitwerking laat de leerling minder zien dan in denken of mondeling redeneren.',
+      'De leerling laat mondeling of in gesprek meer zien dan in schriftelijk werk.',
     category: 'core',
     profileIds: ['type5']
   },
@@ -168,7 +168,7 @@ const observationItems = [
     domain: 'execution',
     domainLabel: 'Uitvoering en leerproduct',
     prompt:
-      'De leerling laat wisselende kwaliteit zien tussen begrijpen, denken en uitvoeren.',
+      'De leerling is niet altijd taakgericht.',
     category: 'supporting',
     profileIds: ['type5']
   },
@@ -177,8 +177,17 @@ const observationItems = [
     domain: 'execution',
     domainLabel: 'Uitvoering en leerproduct',
     prompt:
-      'De leerling laat sterke inzichten of begrip zien, maar schooltaken geven daarvan geen passend beeld.',
+      'De kwaliteit van het werk past niet altijd bij wat de leerling mondeling of tijdens het denken laat zien.',
     category: 'core',
+    profileIds: ['type5']
+  },
+  {
+    id: 'obs-strong-problem-solving',
+    domain: 'execution',
+    domainLabel: 'Uitvoering en leerproduct',
+    prompt:
+      'De leerling laat sterk probleemoplossend denken zien.',
+    category: 'supporting',
     profileIds: ['type5']
   },
 
@@ -196,7 +205,7 @@ const observationItems = [
     domain: 'self-direction',
     domainLabel: 'Zelfsturing en ambitie',
     prompt:
-      'De leerling stelt zelf doelen of bewaakt zichtbaar de eigen voortgang.',
+      'De leerling werkt zelfstandig zonder bevestiging te zoeken.',
     category: 'core',
     profileIds: ['type6']
   },
@@ -219,15 +228,6 @@ const observationItems = [
     profileIds: ['type6']
   },
 
-  {
-    id: 'ctx-small-group-stronger',
-    domain: 'school-context',
-    domainLabel: 'Contextsignalen in school',
-    prompt:
-      'De leerling laat in een klein groepje of in een veiligere setting meer zien dan in de hele groep.',
-    category: 'context',
-    profileIds: ['type3', 'type5']
-  },
   {
     id: 'ctx-peer-match-helps',
     domain: 'school-context',
