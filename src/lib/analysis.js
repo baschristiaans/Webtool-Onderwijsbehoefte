@@ -57,23 +57,6 @@ const TYPE5_EXECUTION_MISMATCH_ITEMS = [
   'obs-oral-more-than-written'
 ];
 
-/*
-  Nieuwe activatielogica voor type 1, 2, 3, 4 en 6:
-  Een profiel is pas regulier wanneer er voldoende profielspecifieke evidentie is.
-
-  Route A:
-  - minstens één unieke core-observatie op sterkte 3
-
-  Route B:
-  - minstens twee waargenomen profielitems
-  - minstens één core-item
-  - minstens één core-item op sterkte 2 of 3
-
-  Dit voorkomt dat één los algemeen of gedeeld signaal te snel
-  een profieluitkomst forceert.
-*/
-const NON_TYPE5_MIN_SCORE = 2;
-
 export function normalizeText(text) {
   if (typeof text !== 'string') return text;
 
@@ -214,18 +197,22 @@ function summarizeEvidenceForProfile(evidenceItems) {
   const strongCoreCount = evidenceItems.filter(
     (item) => item.category === 'core' && item.strength >= 2
   ).length;
-  const veryStrongUniqueCoreCount = evidenceItems.filter(
+  const uniqueCoreCount = evidenceItems.filter(
+    (item) => item.category === 'core' && item.distinction === 'unique'
+  ).length;
+  const strongUniqueCoreCount = evidenceItems.filter(
     (item) =>
       item.category === 'core' &&
       item.distinction === 'unique' &&
-      item.strength >= 3
+      item.strength >= 2
   ).length;
 
   return {
     observedItemCount,
     observedCoreCount,
     strongCoreCount,
-    veryStrongUniqueCoreCount
+    uniqueCoreCount,
+    strongUniqueCoreCount
   };
 }
 
@@ -238,47 +225,93 @@ function buildEvidenceSummaryByProfile(supportingObservationsByProfile) {
   );
 }
 
-function validateNonType5Eligibility(evidenceSummary, score) {
-  if (score < NON_TYPE5_MIN_SCORE) {
-    return { status: 'insufficient' };
-  }
+function countObservedItemsByIds(observationAnswers, ids, minimumStrength = 1) {
+  return ids.filter((id) => Number(observationAnswers[id] ?? 0) >= minimumStrength).length;
+}
 
-  if (evidenceSummary.veryStrongUniqueCoreCount >= 1) {
-    return { status: 'regular' };
-  }
+function validateType1Eligibility(evidenceSummary, score) {
+  const eligible =
+    score >= 2 &&
+    evidenceSummary.observedItemCount >= 2 &&
+    evidenceSummary.observedCoreCount >= 1;
 
-  if (
+  return { status: eligible ? 'regular' : 'insufficient' };
+}
+
+function validateType2Eligibility(evidenceSummary, score, observationAnswers) {
+  const strongAnchorCount = countObservedItemsByIds(observationAnswers, TYPE2_ANCHOR_ITEMS, 2);
+
+  const eligible =
+    score >= 2 &&
     evidenceSummary.observedItemCount >= 2 &&
     evidenceSummary.observedCoreCount >= 1 &&
-    evidenceSummary.strongCoreCount >= 1
-  ) {
-    return { status: 'regular' };
-  }
+    strongAnchorCount >= 1;
 
-  return { status: 'insufficient' };
+  return { status: eligible ? 'regular' : 'insufficient' };
+}
+
+function validateType3Eligibility(evidenceSummary, score) {
+  const eligible =
+    score >= 2 &&
+    evidenceSummary.observedItemCount >= 2 &&
+    evidenceSummary.observedCoreCount >= 1;
+
+  return { status: eligible ? 'regular' : 'insufficient' };
+}
+
+function validateType4Eligibility(evidenceSummary, score) {
+  const eligible =
+    score >= 2 &&
+    evidenceSummary.observedItemCount >= 2 &&
+    evidenceSummary.observedCoreCount >= 1;
+
+  return { status: eligible ? 'regular' : 'insufficient' };
 }
 
 function validateType5Eligibility(evidenceFlags, score) {
   const flags = evidenceFlags.type5;
 
-  if (
+  const eligible =
     flags.hasKnownSupportInfoContext &&
     flags.hasStrengthIndicator &&
     flags.hasExecutionMismatchIndicator &&
-    score >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score
-  ) {
-    return { status: 'regular' };
-  }
+    score >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score;
 
-  return { status: 'insufficient' };
+  return { status: eligible ? 'regular' : 'insufficient' };
 }
 
-function validateProfileEligibility(profileId, evidenceFlags, evidenceSummary, score) {
-  if (profileId === 'type5') {
-    return validateType5Eligibility(evidenceFlags, score);
-  }
+function validateType6Eligibility(evidenceSummary, score) {
+  const eligible =
+    score >= 3 &&
+    evidenceSummary.observedItemCount >= 2 &&
+    evidenceSummary.observedCoreCount >= 2;
 
-  return validateNonType5Eligibility(evidenceSummary, score);
+  return { status: eligible ? 'regular' : 'insufficient' };
+}
+
+function validateProfileEligibility(
+  profileId,
+  evidenceFlags,
+  evidenceSummary,
+  score,
+  observationAnswers
+) {
+  switch (profileId) {
+    case 'type1':
+      return validateType1Eligibility(evidenceSummary, score);
+    case 'type2':
+      return validateType2Eligibility(evidenceSummary, score, observationAnswers);
+    case 'type3':
+      return validateType3Eligibility(evidenceSummary, score);
+    case 'type4':
+      return validateType4Eligibility(evidenceSummary, score);
+    case 'type5':
+      return validateType5Eligibility(evidenceFlags, score);
+    case 'type6':
+      return validateType6Eligibility(evidenceSummary, score);
+    default:
+      return { status: 'insufficient' };
+  }
 }
 
 function applyEligibilityAdjustments(scoresByProfile, profileStatusById) {
@@ -407,7 +440,8 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
         profileId,
         evidenceFlags,
         evidenceSummaryByProfile[profileId],
-        scoresByProfile[profileId]
+        scoresByProfile[profileId],
+        observationAnswers
       )
     ])
   );
@@ -421,7 +455,8 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
         profileId,
         evidenceFlags,
         evidenceSummaryByProfile[profileId],
-        scoresByProfile[profileId]
+        scoresByProfile[profileId],
+        observationAnswers
       )
     ])
   );
@@ -459,19 +494,33 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
 
   if (type5Eligible) {
     topProfile = type5Profile;
-    overlapProfile =
-      mainTopProfile && mainTopProfile.score > 0 ? mainTopProfile : null;
+
+    const eligibleMainTopProfile =
+      mainTopProfile &&
+      mainTopProfile.status.status === 'regular' &&
+      mainTopProfile.score > 0
+        ? mainTopProfile
+        : null;
+
+    overlapProfile = eligibleMainTopProfile;
     directionKey = overlapProfile ? 'overlap' : 'single';
   } else if (mainTopProfile && mainTopProfile.score > 0) {
+    const secondEligible =
+      mainSecondProfile &&
+      mainSecondProfile.status.status === 'regular' &&
+      mainSecondProfile.score > 0
+        ? mainSecondProfile
+        : null;
+
     const overlapDifference =
-      mainTopProfile.score - (mainSecondProfile?.score ?? 0);
+      mainTopProfile.score - (secondEligible?.score ?? 0);
 
     const hasMeaningfulOverlap =
-      (mainSecondProfile?.score ?? 0) > 0 &&
+      Boolean(secondEligible) &&
       overlapDifference <= PROFILE_DIRECTION_THRESHOLDS.overlapDifference;
 
     topProfile = mainTopProfile;
-    overlapProfile = hasMeaningfulOverlap ? mainSecondProfile : null;
+    overlapProfile = hasMeaningfulOverlap ? secondEligible : null;
     directionKey = hasMeaningfulOverlap ? 'overlap' : 'single';
   }
 
