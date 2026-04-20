@@ -1,3 +1,4 @@
+import React, { useEffect, useMemo, useState } from 'react';
 import profiles from './data/profiles.js';
 import observationItems, { OBSERVATION_SCORE_OPTIONS } from './data/observationItems.js';
 import { analyzeProfileBase, analyzeRichInterpretation, buildProfileScoreOverview, normalizeText } from './lib/analysis.js';
