@@ -10,9 +10,10 @@ export const PROFILE_IDS = [
 ];
 
 export const PROFILE_DIRECTION_THRESHOLDS = {
-  overlapDifference: 2,
+  overlapDifference: 1,
   clearDifference: 4,
-  minimumType5Score: 4
+  minimumType5Score: 4,
+  minimumOverlapScore: 3
 };
 
 const CATEGORY_POINTS = {
@@ -498,7 +499,7 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     const eligibleMainTopProfile =
       mainTopProfile &&
       mainTopProfile.status.status === 'regular' &&
-      mainTopProfile.score > 0
+      mainTopProfile.score >= PROFILE_DIRECTION_THRESHOLDS.minimumOverlapScore
         ? mainTopProfile
         : null;
 
@@ -508,7 +509,7 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     const secondEligible =
       mainSecondProfile &&
       mainSecondProfile.status.status === 'regular' &&
-      mainSecondProfile.score > 0
+      mainSecondProfile.score >= PROFILE_DIRECTION_THRESHOLDS.minimumOverlapScore
         ? mainSecondProfile
         : null;
 
