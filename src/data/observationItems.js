@@ -33,7 +33,24 @@ const observationItems = [
     category: 'supporting',
     profileIds: ['type1']
   },
-
+{
+  id: 'obs-follows-expectations-closely',
+  domain: 'task-approach',
+  domainLabel: 'Taakaanpak en leerhouding',
+  prompt:
+    'De leerling richt zich sterk op het voldoen aan de verwachtingen van de leerkracht.',
+  category: 'supporting',
+  profileIds: ['type1']
+},
+{
+  id: 'obs-avoids-uncertain-challenge',
+  domain: 'task-approach',
+  domainLabel: 'Taakaanpak en leerhouding',
+  prompt:
+    'De leerling kiest liever voor zekerheid dan voor een moeilijkere of onzekere leerroute.',
+  category: 'core',
+  profileIds: ['type1']
+},
   {
     id: 'obs-reacts-to-unfairness',
     domain: 'response-challenge',
@@ -107,7 +124,24 @@ const observationItems = [
     category: 'supporting',
     profileIds: ['type3']
   },
-
+{
+  id: 'obs-downplays-performance-to-fit-in',
+  domain: 'social-visibility',
+  domainLabel: 'Sociale zichtbaarheid en afstemming',
+  prompt:
+    'De leerling tempert zichtbaar eigen prestaties of antwoorden om niet op te vallen in de groep.',
+  category: 'core',
+  profileIds: ['type3']
+},
+{
+  id: 'obs-rejects-visible-challenge',
+  domain: 'social-visibility',
+  domainLabel: 'Sociale zichtbaarheid en afstemming',
+  prompt:
+    'De leerling wijst extra uitdaging af wanneer die hem of haar zichtbaar anders maakt dan groepsgenoten.',
+  category: 'core',
+  profileIds: ['type3']
+},
   {
     id: 'obs-resistant-schoolwork',
     domain: 'engagement',
@@ -162,7 +196,15 @@ const observationItems = [
     category: 'supporting',
     profileIds: ['type4']
   },
-
+{
+  id: 'obs-hard-to-reengage-after-dropout',
+  domain: 'engagement',
+  domainLabel: 'Betrokkenheid en schoolverbinding',
+  prompt:
+    'De leerling haakt tijdens schooltaken zichtbaar af en keert moeilijk terug in de taak.',
+  category: 'core',
+  profileIds: ['type4']
+},
   {
     id: 'obs-unorganized-work',
     domain: 'execution',
