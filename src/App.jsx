@@ -1,4 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  buildTrackingPayload,
+  createSessionId,
+  saveTrackingRecord
+} from './lib/tracking.js';
 import profiles from './data/profiles.js';
 import observationItems, { OBSERVATION_SCORE_OPTIONS } from './data/observationItems.js';
 import { analyzeProfileBase, analyzeRichInterpretation, buildProfileScoreOverview, normalizeText } from './lib/analysis.js';
@@ -308,7 +313,31 @@ function App() {
       }),
     [profileBase, interpretation, profilesById, contextInput, homeInput]
   );
-
+const trackingSignature = useMemo(
+  () =>
+    JSON.stringify({
+      topProfileId: profileBase.topProfileId,
+      overlapProfileId: profileBase.overlapProfileId,
+      directionKey: profileBase.directionKey,
+      topScore: profileBase.topScore,
+      secondScore: profileBase.secondScore,
+      observationAnswers,
+      contextInput,
+      homeInput,
+      testScores
+    }),
+  [
+    profileBase.topProfileId,
+    profileBase.overlapProfileId,
+    profileBase.directionKey,
+    profileBase.topScore,
+    profileBase.secondScore,
+    observationAnswers,
+    contextInput,
+    homeInput,
+    testScores
+  ]
+);
   const bestProfile = profileBase.topProfileId
     ? profilesById[profileBase.topProfileId]
     : null;
@@ -375,7 +404,47 @@ function App() {
         setIsProfileModalOpen(false);
       }
     };
+useEffect(() => {
+  if (currentStepConfig?.key !== 'results') return;
+  if (!profileBase.topProfileId && profileBase.directionKey !== 'no_signal') return;
+  if (lastTrackedSignatureRef.current === trackingSignature) return;
 
+  const payload = buildTrackingPayload({
+    sessionId,
+    student,
+    zoovSignal,
+    contextInput,
+    homeInput,
+    testScores,
+    observationAnswers,
+    profileBase,
+    interpretation,
+    advice
+  });
+
+  saveTrackingRecord(payload)
+    .then((result) => {
+      if (result.ok || result.skipped) {
+        lastTrackedSignatureRef.current = trackingSignature;
+      }
+    })
+    .catch((error) => {
+      console.error('Opslaan van tool_run mislukt:', error);
+    });
+}, [
+  currentStepConfig?.key,
+  trackingSignature,
+  sessionId,
+  student,
+  zoovSignal,
+  contextInput,
+  homeInput,
+  testScores,
+  observationAnswers,
+  profileBase,
+  interpretation,
+  advice
+]);
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isProfileModalOpen]);
@@ -421,6 +490,7 @@ function App() {
     setIsChecklistConfirmed(false);
     setIsDisclaimerConfirmed(false);
   };
+  lastTrackedSignatureRef.current = null;
 
   const handleExport = () => {
     const exportText = buildExportText({
