@@ -275,6 +275,17 @@ function applyProfileAreaGuards(areaScores, topProfileId) {
   }
 }
 
+function splitSources(sourceText) {
+  if (!sourceText) return [];
+
+  return unique(
+    sourceText
+      .split(';')
+      .map((item) => item.trim())
+      .filter(Boolean)
+  );
+}
+
 function combineNeedText(primaryText, overlapText, overlapShortTitle) {
   if (!primaryText) return overlapText || '';
   if (!overlapText || primaryText === overlapText) return primaryText;
@@ -318,7 +329,9 @@ function buildGenericNoSignalAdvice() {
         advice:
           'Bied tijdelijk een kleine, duidelijk afgebakende verrijkings- of verdiepingsopdracht aan en kijk of betrokkenheid, initiatief of kwaliteit van denken dan verandert.',
         reason:
-          'Zonder positieve profielsignalen zegt vooral de reactie op aangepast aanbod iets over verdere duiding.'
+          'Zonder positieve profielsignalen zegt vooral de reactie op aangepast aanbod iets over verdere duiding.',
+        sharedByOverlap: false,
+        sources: []
       },
       {
         area: 'Leeractiviteiten',
@@ -327,7 +340,9 @@ function buildGenericNoSignalAdvice() {
         advice:
           'Vergelijk doelgericht meerdere situaties: klassikaal, individueel, mondeling, schriftelijk en bij open of gesloten opdrachten.',
         reason:
-          'Verschillen tussen situaties kunnen later richting geven aan profielduiding en onderwijsafstemming.'
+          'Verschillen tussen situaties kunnen later richting geven aan profielduiding en onderwijsafstemming.',
+        sharedByOverlap: false,
+        sources: []
       },
       {
         area: 'Leeromgeving',
@@ -336,7 +351,9 @@ function buildGenericNoSignalAdvice() {
         advice:
           'Let erop of de leerling in een kleinere, veiligere of inhoudelijk passender setting ander gedrag laat zien dan in de hele groep.',
         reason:
-          'Contextverschillen kunnen verklaren waarom profielsignalen in de gewone klassensituatie nog weinig zichtbaar zijn.'
+          'Contextverschillen kunnen verklaren waarom profielsignalen in de gewone klassensituatie nog weinig zichtbaar zijn.',
+        sharedByOverlap: false,
+        sources: []
       },
       {
         area: 'Leerkracht',
@@ -345,9 +362,12 @@ function buildGenericNoSignalAdvice() {
         advice:
           'Bespreek de huidige observaties met collega of intern begeleider en spreek af welke aanvullende observaties of kleine interventies eerst worden uitgeprobeerd.',
         reason:
-          'Een nulsituatie vraagt niet om forceren, maar om gerichte vervolgstappen.'
+          'Een nulsituatie vraagt niet om forceren, maar om gerichte vervolgstappen.',
+        sharedByOverlap: false,
+        sources: []
       }
     ],
+    adviceSources: [],
     workHypothesis:
       'In de huidige observaties zijn geen duidelijke profielsignalen naar voren gekomen.',
     shortInterpretation:
@@ -527,6 +547,9 @@ export default function buildPersonalizedAdvice({
       );
     }
 
+    const primarySources = splitSources(primaryNeed?.sources || '');
+    const overlapSources = splitSources(overlapNeed?.sources || '');
+
     return {
       area,
       need:
@@ -560,9 +583,14 @@ export default function buildPersonalizedAdvice({
       reason: reasonParts.join(' '),
       sharedByOverlap: Boolean(
         (useCombinedAdvice && overlapNeed) || hasType5Accent
-      )
+      ),
+      sources: unique([...primarySources, ...overlapSources])
     };
   });
+
+  const adviceSources = unique(
+    prioritizedNeeds.flatMap((item) => item.sources || [])
+  );
 
   const intro = buildInterpretationPrefix(profileBase, topProfile, overlapProfile);
 
@@ -658,6 +686,7 @@ export default function buildPersonalizedAdvice({
 
   return {
     prioritizedNeeds,
+    adviceSources,
     workHypothesis,
     shortInterpretation,
     followUpSteps,
