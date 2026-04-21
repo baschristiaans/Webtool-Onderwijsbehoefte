@@ -1213,18 +1213,23 @@ function App() {
         </article>
 
         <article className="panel caution-panel">
-          <p className="section-label">Kanttekening</p>
-          <p>{advice.caution}</p>
-        </article>
+  <p className="section-label">Kanttekening</p>
+  <p>{advice.caution}</p>
+  {advice.adviceSources?.length > 0 && (
+    <p className="result-sources">
+      Bronnen: {advice.adviceSources.join('; ')}
+    </p>
+  )}
+</article>
 
-        <article className="panel action-panel">
-          <button type="button" className="ghost-button" onClick={handleReset}>
-            Nieuwe invoer starten
-          </button>
-          <button type="button" className="primary-button" onClick={handleExport}>
-            Exporteer werkhypothese
-          </button>
-        </article>
+<article className="panel action-panel">
+  <button type="button" className="ghost-button" onClick={handleReset}>
+    Nieuwe invoer starten
+  </button>
+  <button type="button" className="primary-button" onClick={handleExport}>
+    Exporteer werkhypothese
+  </button>
+</article>
       </div>
     );
   }

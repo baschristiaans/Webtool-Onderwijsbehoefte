@@ -506,3 +506,9 @@ p {
     padding: 18px;
   }
 }
+.result-sources {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #6b7280;
+}
