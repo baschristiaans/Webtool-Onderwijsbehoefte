@@ -416,8 +416,13 @@ function App() {
 
   useEffect(() => {
     if (currentStepConfig?.key !== 'results') return;
-    if (!profileBase.topProfileId && profileBase.directionKey !== 'no_signal') return;
-    if (lastTrackedSignatureRef.current === trackingSignature) return;
+
+const canTrackResult =
+  profileBase.directionKey === 'no_signal' ||
+  Boolean(profileBase.topProfileId);
+
+if (!canTrackResult) return;
+if (lastTrackedSignatureRef.current === trackingSignature) return;
 
     const payload = buildTrackingPayload({
       sessionId,

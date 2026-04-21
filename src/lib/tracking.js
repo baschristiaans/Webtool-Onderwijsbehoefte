@@ -36,7 +36,7 @@ export function buildTrackingPayload({
         : null,
     test_scores: testScores,
     observation_answers: observationAnswers,
-    raw_scores_by_profile: profileBase.scoresByProfile,
+    raw_scores_by_profile: profileBase.rawScoresByProfile,
     top_profile_id: profileBase.topProfileId || null,
     overlap_profile_id: profileBase.overlapProfileId || null,
     direction_key: profileBase.directionKey || null,

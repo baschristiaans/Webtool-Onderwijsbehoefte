@@ -672,10 +672,10 @@ export default function buildPersonalizedAdvice({
   if (homeInput.pattern === 'contrast') {
     homeAttention =
       'De thuissituatie contrasteert met het schoolbeeld. Dat verschil verdient expliciete aandacht in de interpretatie en vervolgstappen.';
-  } else if (homeInput.pattern === 'match') {
-    homeAttention =
-      'Het thuissignaal bevestigt het schoolbeeld grotendeels. Dat maakt de huidige werkhypothese consistenter, maar niet definitief.';
-  }
+  } else if (homeInput.pattern === 'confirm') {
+  homeAttention =
+    'Het thuissignaal bevestigt het schoolbeeld grotendeels. Dat maakt de huidige werkhypothese consistenter, maar niet definitief.';
+}
 
   const resultHeading =
     profileBase.directionKey === 'overlap' && overlapProfile
