@@ -62,22 +62,6 @@ test('type5 wordt uitgesloten zonder bekende ondersteuningsinformatie', () => {
   assert.notEqual(result.topProfileId, 'type5');
 });
 
-test('type5 wordt uitgesloten zonder bekende ondersteuningsinformatie', () => {
-  const result = analyzeProfileBase(
-    {
-      'obs-strong-problem-solving': 3,
-      'obs-unorganized-work': 3,
-      'obs-work-quality-mismatch': 3,
-      'obs-not-always-on-task': 2
-    },
-    { knownSupportInfoPresence: 'no' }
-  );
-
-  assert.equal(result.profileStatusById.type5.status, 'insufficient');
-  assert.equal(result.scoresByProfile.type5, 0);
-  assert.notEqual(result.topProfileId, 'type5');
-});
-
 test('type5 wordt toegestaan met sterke signalen en bekende ondersteuningsinformatie', () => {
   const result = analyzeProfileBase(
     {
@@ -103,6 +87,7 @@ test('type5 wordt uitgesloten zonder sterkte-indicator', () => {
     { knownSupportInfoPresence: 'yes' }
   );
 
+  assert.equal(result.evidenceFlags.type5.hasStrengthIndicator, false);
   assert.equal(result.profileStatusById.type5.status, 'insufficient');
   assert.equal(result.scoresByProfile.type5, 0);
   assert.notEqual(result.topProfileId, 'type5');
@@ -116,10 +101,12 @@ test('type5 wordt uitgesloten zonder mismatch-indicator', () => {
     { knownSupportInfoPresence: 'yes' }
   );
 
+  assert.equal(result.evidenceFlags.type5.hasExecutionMismatchIndicator, false);
   assert.equal(result.profileStatusById.type5.status, 'insufficient');
   assert.equal(result.scoresByProfile.type5, 0);
   assert.notEqual(result.topProfileId, 'type5');
 });
+
 test('contra-indicatoren verlagen type1 bij sterke type6 signalen', () => {
   const result = analyzeProfileBase(
     {
