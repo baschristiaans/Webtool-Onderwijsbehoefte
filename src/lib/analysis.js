@@ -10,10 +10,9 @@ export const PROFILE_IDS = [
 ];
 
 export const PROFILE_DIRECTION_THRESHOLDS = {
-  overlapDifference: 1,
+  overlapDifference: 2,
   clearDifference: 4,
-  minimumType5Score: 4,
-  minimumOverlapScore: 3
+  minimumType5Score: 4
 };
 
 const CATEGORY_POINTS = {
@@ -32,30 +31,20 @@ const TEST_LEVEL_MAP = {
   weak: 0
 };
 
+const TEST_LEVEL_DISPLAY = {
+  unknown: 'niet ingevuld',
+  veryStrong: 'zeer sterk',
+  strong: 'sterk',
+  average: 'gemiddeld',
+  vulnerable: 'kwetsbaar',
+  weak: 'zwak'
+};
+
 const TYPE2_ANCHOR_ITEMS = [
   'obs-critical-rules',
   'obs-original-ideas',
   'obs-discussion-overtakes-task',
   'obs-keeps-group-busy-low-challenge'
-];
-
-/*
-  Type 5 mag nooit alleen uit observaties ontstaan.
-  Daarom gebruiken we type-5-signalen alleen als patroonversterkers
-  wanneer bekende relevante ondersteuningsinformatie aanwezig is.
-
-  Strakke keuze:
-  - Sterkte-indicator: alleen een duidelijke cognitieve sterkte
-  - Mismatch-/uitvoeringsindicatoren: signalen dat laten zien, organiseren
-    of uitvoeren achterblijft bij wat de leerling lijkt te kunnen
-*/
-const TYPE5_STRENGTH_ITEMS = ['obs-strong-problem-solving'];
-
-const TYPE5_EXECUTION_MISMATCH_ITEMS = [
-  'obs-unorganized-work',
-  'obs-work-quality-mismatch',
-  'obs-not-always-on-task',
-  'obs-oral-more-than-written'
 ];
 
 export function normalizeText(text) {
@@ -110,31 +99,9 @@ function createEvidenceFlags() {
     type5: {
       hasStrengthIndicator: false,
       hasExecutionMismatchIndicator: false,
-      hasKnownSupportInfoContext: false,
-      strengthIndicatorIds: [],
-      executionMismatchIds: []
+      hasKnownSupportInfoContext: false
     }
   };
-}
-
-function pushUnique(list, value) {
-  if (!list.includes(value)) {
-    list.push(value);
-  }
-}
-
-function updateType5EvidenceFlags(itemId, evidenceFlags) {
-  const flags = evidenceFlags.type5;
-
-  if (TYPE5_STRENGTH_ITEMS.includes(itemId)) {
-    flags.hasStrengthIndicator = true;
-    pushUnique(flags.strengthIndicatorIds, itemId);
-  }
-
-  if (TYPE5_EXECUTION_MISMATCH_ITEMS.includes(itemId)) {
-    flags.hasExecutionMismatchIndicator = true;
-    pushUnique(flags.executionMismatchIds, itemId);
-  }
 }
 
 function getPointKey(item) {
@@ -190,137 +157,43 @@ function applyType2AnchorRule(scoresByProfile, observationAnswers) {
   }
 }
 
-function summarizeEvidenceForProfile(evidenceItems) {
-  const observedItemCount = evidenceItems.length;
-  const observedCoreCount = evidenceItems.filter(
-    (item) => item.category === 'core'
-  ).length;
-  const strongCoreCount = evidenceItems.filter(
-    (item) => item.category === 'core' && item.strength >= 2
-  ).length;
-  const uniqueCoreCount = evidenceItems.filter(
-    (item) => item.category === 'core' && item.distinction === 'unique'
-  ).length;
-  const strongUniqueCoreCount = evidenceItems.filter(
-    (item) =>
-      item.category === 'core' &&
-      item.distinction === 'unique' &&
-      item.strength >= 2
-  ).length;
+function validateProfileEligibility(profileId, evidenceFlags, score) {
+  if (profileId !== 'type5') {
+    return {
+      status: 'regular'
+    };
+  }
 
-  return {
-    observedItemCount,
-    observedCoreCount,
-    strongCoreCount,
-    uniqueCoreCount,
-    strongUniqueCoreCount
-  };
-}
-
-function buildEvidenceSummaryByProfile(supportingObservationsByProfile) {
-  return Object.fromEntries(
-    PROFILE_IDS.map((profileId) => [
-      profileId,
-      summarizeEvidenceForProfile(supportingObservationsByProfile[profileId] || [])
-    ])
-  );
-}
-
-function countObservedItemsByIds(observationAnswers, ids, minimumStrength = 1) {
-  return ids.filter((id) => Number(observationAnswers[id] ?? 0) >= minimumStrength).length;
-}
-
-function validateType1Eligibility(evidenceSummary, score) {
-  const eligible =
-    score >= 2 &&
-    evidenceSummary.observedItemCount >= 2 &&
-    evidenceSummary.observedCoreCount >= 1;
-
-  return { status: eligible ? 'regular' : 'insufficient' };
-}
-
-function validateType2Eligibility(evidenceSummary, score, observationAnswers) {
-  const strongAnchorCount = countObservedItemsByIds(observationAnswers, TYPE2_ANCHOR_ITEMS, 2);
-
-  const eligible =
-    score >= 2 &&
-    evidenceSummary.observedItemCount >= 2 &&
-    evidenceSummary.observedCoreCount >= 1 &&
-    strongAnchorCount >= 1;
-
-  return { status: eligible ? 'regular' : 'insufficient' };
-}
-
-function validateType3Eligibility(evidenceSummary, score) {
-  const eligible =
-    score >= 2 &&
-    evidenceSummary.observedItemCount >= 2 &&
-    evidenceSummary.observedCoreCount >= 1;
-
-  return { status: eligible ? 'regular' : 'insufficient' };
-}
-
-function validateType4Eligibility(evidenceSummary, score) {
-  const eligible =
-    score >= 2 &&
-    evidenceSummary.observedItemCount >= 2 &&
-    evidenceSummary.observedCoreCount >= 1;
-
-  return { status: eligible ? 'regular' : 'insufficient' };
-}
-
-function validateType5Eligibility(evidenceFlags, score) {
   const flags = evidenceFlags.type5;
 
-  const eligible =
+  if (
     flags.hasKnownSupportInfoContext &&
     flags.hasStrengthIndicator &&
     flags.hasExecutionMismatchIndicator &&
-    score >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score;
-
-  return { status: eligible ? 'regular' : 'insufficient' };
-}
-
-function validateType6Eligibility(evidenceSummary, score) {
-  const eligible =
-    score >= 3 &&
-    evidenceSummary.observedItemCount >= 2 &&
-    evidenceSummary.observedCoreCount >= 2;
-
-  return { status: eligible ? 'regular' : 'insufficient' };
-}
-
-function validateProfileEligibility(
-  profileId,
-  evidenceFlags,
-  evidenceSummary,
-  score,
-  observationAnswers
-) {
-  switch (profileId) {
-    case 'type1':
-      return validateType1Eligibility(evidenceSummary, score);
-    case 'type2':
-      return validateType2Eligibility(evidenceSummary, score, observationAnswers);
-    case 'type3':
-      return validateType3Eligibility(evidenceSummary, score);
-    case 'type4':
-      return validateType4Eligibility(evidenceSummary, score);
-    case 'type5':
-      return validateType5Eligibility(evidenceFlags, score);
-    case 'type6':
-      return validateType6Eligibility(evidenceSummary, score);
-    default:
-      return { status: 'insufficient' };
+    score >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score
+  ) {
+    return {
+      status: 'regular'
+    };
   }
+
+  return {
+    status: 'insufficient'
+  };
 }
 
-function applyEligibilityAdjustments(scoresByProfile, profileStatusById) {
-  PROFILE_IDS.forEach((profileId) => {
-    if (profileStatusById[profileId]?.status !== 'regular') {
-      scoresByProfile[profileId] = 0;
-    }
-  });
+function applyEligibilityAdjustments(scoresByProfile, evidenceFlags) {
+  const flags = evidenceFlags.type5;
+
+  const type5Eligible =
+    flags.hasKnownSupportInfoContext &&
+    flags.hasStrengthIndicator &&
+    flags.hasExecutionMismatchIndicator &&
+    scoresByProfile.type5 >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score;
+
+  if (!type5Eligible) {
+    scoresByProfile.type5 = 0;
+  }
 }
 
 function buildEvidenceQuality(topProfile, secondProfile) {
@@ -407,7 +280,20 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
       return;
     }
 
-    updateType5EvidenceFlags(item.id, evidenceFlags);
+    if (
+      item.id === 'obs-oral-more-than-written' ||
+      item.id === 'obs-work-quality-mismatch'
+    ) {
+      evidenceFlags.type5.hasStrengthIndicator = true;
+      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
+    }
+
+    if (
+      item.id === 'obs-unorganized-work' ||
+      item.id === 'obs-not-always-on-task'
+    ) {
+      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
+    }
 
     const pointKey = getPointKey(item);
     const points = CATEGORY_POINTS[pointKey][answerValue];
@@ -429,36 +315,12 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
 
   applyContraIndicators(scoresByProfile, observationAnswers);
   applyType2AnchorRule(scoresByProfile, observationAnswers);
-
-  const evidenceSummaryByProfile = buildEvidenceSummaryByProfile(
-    supportingObservationsByProfile
-  );
-
-  const initialProfileStatusById = Object.fromEntries(
-    PROFILE_IDS.map((profileId) => [
-      profileId,
-      validateProfileEligibility(
-        profileId,
-        evidenceFlags,
-        evidenceSummaryByProfile[profileId],
-        scoresByProfile[profileId],
-        observationAnswers
-      )
-    ])
-  );
-
-  applyEligibilityAdjustments(scoresByProfile, initialProfileStatusById);
+  applyEligibilityAdjustments(scoresByProfile, evidenceFlags);
 
   const profileStatusById = Object.fromEntries(
     PROFILE_IDS.map((profileId) => [
       profileId,
-      validateProfileEligibility(
-        profileId,
-        evidenceFlags,
-        evidenceSummaryByProfile[profileId],
-        scoresByProfile[profileId],
-        observationAnswers
-      )
+      validateProfileEligibility(profileId, evidenceFlags, scoresByProfile[profileId])
     ])
   );
 
@@ -495,33 +357,19 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
 
   if (type5Eligible) {
     topProfile = type5Profile;
-
-    const eligibleMainTopProfile =
-      mainTopProfile &&
-      mainTopProfile.status.status === 'regular' &&
-      mainTopProfile.score >= PROFILE_DIRECTION_THRESHOLDS.minimumOverlapScore
-        ? mainTopProfile
-        : null;
-
-    overlapProfile = eligibleMainTopProfile;
+    overlapProfile =
+      mainTopProfile && mainTopProfile.score > 0 ? mainTopProfile : null;
     directionKey = overlapProfile ? 'overlap' : 'single';
   } else if (mainTopProfile && mainTopProfile.score > 0) {
-    const secondEligible =
-      mainSecondProfile &&
-      mainSecondProfile.status.status === 'regular' &&
-      mainSecondProfile.score >= PROFILE_DIRECTION_THRESHOLDS.minimumOverlapScore
-        ? mainSecondProfile
-        : null;
-
     const overlapDifference =
-      mainTopProfile.score - (secondEligible?.score ?? 0);
+      mainTopProfile.score - (mainSecondProfile?.score ?? 0);
 
     const hasMeaningfulOverlap =
-      Boolean(secondEligible) &&
+      (mainSecondProfile?.score ?? 0) > 0 &&
       overlapDifference <= PROFILE_DIRECTION_THRESHOLDS.overlapDifference;
 
     topProfile = mainTopProfile;
-    overlapProfile = hasMeaningfulOverlap ? secondEligible : null;
+    overlapProfile = hasMeaningfulOverlap ? mainSecondProfile : null;
     directionKey = hasMeaningfulOverlap ? 'overlap' : 'single';
   }
 
@@ -548,7 +396,6 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     sortedProfiles,
     profileStatusById,
     evidenceFlags,
-    evidenceSummaryByProfile,
     positiveObservationCount,
     hasNoProfileSignal,
     hasMeaningfulOverlap: Boolean(overlapProfile),
@@ -576,7 +423,21 @@ function buildTestEvidenceEntries(testScores) {
 }
 
 function summarizeTestLabels(entries) {
-  return entries.map((entry) => `${entry.key}: ${entry.value}`).join(', ');
+  const labelMap = {
+    dmt: 'DMT',
+    avi: 'AVI',
+    begrijpendLezen: 'Begrijpend lezen',
+    rekenen: 'Rekenen',
+    spelling: 'Spelling'
+  };
+
+  return entries
+    .map((entry) => {
+      const testLabel = labelMap[entry.key] || entry.key;
+      const valueLabel = TEST_LEVEL_DISPLAY[entry.value] || entry.value;
+      return `${testLabel}: ${valueLabel}`;
+    })
+    .join(', ');
 }
 
 export function analyzeRichInterpretation({

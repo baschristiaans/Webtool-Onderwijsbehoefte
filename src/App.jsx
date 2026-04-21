@@ -182,7 +182,6 @@ function buildExportText({
     `Notitie: ${zoovSignal.note || '-'}`,
     '',
     'Context',
-    `Verschillen tussen settings: ${contextInput.settingDifference}`,
     `Bekende ondersteuningsinformatie: ${
       KNOWN_SUPPORT_INFO_LABELS[contextInput.knownSupportInfoPresence] ||
       contextInput.knownSupportInfoPresence
@@ -843,22 +842,6 @@ function App() {
         </div>
 
         <div className="field-grid">
-          <label className="field">
-            <span>Verschillen tussen settings</span>
-            <select
-              value={contextInput.settingDifference}
-              onChange={(event) =>
-                handleContextChange('settingDifference', event.target.value)
-              }
-            >
-              {SETTING_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <label className="field">
             <span>Bekende relevante ondersteuningsinformatie</span>
             <select
