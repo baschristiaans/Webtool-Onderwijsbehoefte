@@ -280,20 +280,18 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
       return;
     }
 
-    if (
-      item.id === 'obs-oral-more-than-written' ||
-      item.id === 'obs-work-quality-mismatch'
-    ) {
-      evidenceFlags.type5.hasStrengthIndicator = true;
-      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
-    }
+    if (item.id === 'obs-strong-problem-solving') {
+  evidenceFlags.type5.hasStrengthIndicator = true;
+}
 
-    if (
-      item.id === 'obs-unorganized-work' ||
-      item.id === 'obs-not-always-on-task'
-    ) {
-      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
-    }
+if (
+  item.id === 'obs-unorganized-work' ||
+  item.id === 'obs-not-always-on-task' ||
+  item.id === 'obs-oral-more-than-written' ||
+  item.id === 'obs-work-quality-mismatch'
+) {
+  evidenceFlags.type5.hasExecutionMismatchIndicator = true;
+}
 
     const pointKey = getPointKey(item);
     const points = CATEGORY_POINTS[pointKey][answerValue];
