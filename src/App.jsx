@@ -142,7 +142,7 @@ function formatProfileHeading(profile) {
 }
 
 function formatStrength(strength) {
-  if (strength === 3) return 'duidelijk en consistent zichtbaar';
+  if (strength === 3) return 'duidelijk zichtbaar';
   if (strength === 2) return 'regelmatig zichtbaar';
   if (strength === 1) return 'soms zichtbaar';
   return 'niet waargenomen';
@@ -549,7 +549,7 @@ function App() {
                       <label><input type="checkbox" /> Niet waargenomen</label>
                       <label><input type="checkbox" /> Soms zichtbaar</label>
                       <label><input type="checkbox" /> Regelmatig zichtbaar</label>
-                      <label><input type="checkbox" /> Duidelijk en consistent zichtbaar</label>
+                      <label><input type="checkbox" /> Duidelijk zichtbaar</label>
                     </div>
                   </div>
                 `
