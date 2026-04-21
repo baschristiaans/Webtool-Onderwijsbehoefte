@@ -49,11 +49,26 @@ test('type2 zakt terug als ankeritems ontbreken', () => {
 test('type5 wordt uitgesloten zonder bekende ondersteuningsinformatie', () => {
   const result = analyzeProfileBase(
     {
-      'obs-planning-organization': 2,
-      'obs-written-less-than-thinking': 3,
-      'obs-strong-insight-weak-product': 3,
-      'obs-inconsistent-quality': 2,
-      'ctx-oral-written-gap': 3
+      'obs-strong-problem-solving': 3,
+      'obs-unorganized-work': 3,
+      'obs-work-quality-mismatch': 3,
+      'obs-not-always-on-task': 2
+    },
+    { knownSupportInfoPresence: 'no' }
+  );
+
+  assert.equal(result.profileStatusById.type5.status, 'insufficient');
+  assert.equal(result.scoresByProfile.type5, 0);
+  assert.notEqual(result.topProfileId, 'type5');
+});
+
+test('type5 wordt uitgesloten zonder bekende ondersteuningsinformatie', () => {
+  const result = analyzeProfileBase(
+    {
+      'obs-strong-problem-solving': 3,
+      'obs-unorganized-work': 3,
+      'obs-work-quality-mismatch': 3,
+      'obs-not-always-on-task': 2
     },
     { knownSupportInfoPresence: 'no' }
   );
@@ -66,11 +81,10 @@ test('type5 wordt uitgesloten zonder bekende ondersteuningsinformatie', () => {
 test('type5 wordt toegestaan met sterke signalen en bekende ondersteuningsinformatie', () => {
   const result = analyzeProfileBase(
     {
-      'obs-planning-organization': 2,
-      'obs-written-less-than-thinking': 3,
-      'obs-strong-insight-weak-product': 3,
-      'obs-inconsistent-quality': 2,
-      'ctx-oral-written-gap': 3
+      'obs-strong-problem-solving': 3,
+      'obs-unorganized-work': 3,
+      'obs-work-quality-mismatch': 3,
+      'obs-not-always-on-task': 2
     },
     { knownSupportInfoPresence: 'yes' }
   );
@@ -79,6 +93,33 @@ test('type5 wordt toegestaan met sterke signalen en bekende ondersteuningsinform
   assert.equal(result.topProfileId, 'type5');
 });
 
+test('type5 wordt uitgesloten zonder sterkte-indicator', () => {
+  const result = analyzeProfileBase(
+    {
+      'obs-unorganized-work': 3,
+      'obs-work-quality-mismatch': 3,
+      'obs-not-always-on-task': 2
+    },
+    { knownSupportInfoPresence: 'yes' }
+  );
+
+  assert.equal(result.profileStatusById.type5.status, 'insufficient');
+  assert.equal(result.scoresByProfile.type5, 0);
+  assert.notEqual(result.topProfileId, 'type5');
+});
+
+test('type5 wordt uitgesloten zonder mismatch-indicator', () => {
+  const result = analyzeProfileBase(
+    {
+      'obs-strong-problem-solving': 3
+    },
+    { knownSupportInfoPresence: 'yes' }
+  );
+
+  assert.equal(result.profileStatusById.type5.status, 'insufficient');
+  assert.equal(result.scoresByProfile.type5, 0);
+  assert.notEqual(result.topProfileId, 'type5');
+});
 test('contra-indicatoren verlagen type1 bij sterke type6 signalen', () => {
   const result = analyzeProfileBase(
     {
