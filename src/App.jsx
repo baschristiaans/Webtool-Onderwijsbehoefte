@@ -1323,9 +1323,8 @@ function App() {
             <p className="eyebrow">Webtool profiel en onderwijsbehoefte</p>
             <h1>HB Profiel &amp; Onderwijsbehoefte</h1>
             <p className="intro">
-  Deze tool ondersteunt leerkrachten stap voor stap bij het vormen van een
-  werkhypothese over profiel, overlap, prestatiebeeld en passende
-  onderwijsbehoeften.
+  Deze tool helpt leerkrachten om signalen van leerlingen te duiden en te
+  vertalen naar passende onderwijsbehoeften.
 </p>
             <div className="meta-pills">
               <span className="pill">{answeredObservationCount} observaties ingevuld</span>
