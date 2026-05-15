@@ -1339,30 +1339,33 @@ function App() {
         </div>
       </header>
 
-      <main className="container app-layout">
-        <section className="input-column">
-          <div className="progress-strip">
-            {steps.map((step, index) => {
-              const isActive = index === currentStep;
-              const isDone = index < currentStep;
-              return (
-                <div
-                  key={step.key}
-                  className={`progress-step ${isActive ? 'is-active' : ''} ${
-                    isDone ? 'is-done' : ''
-                  }`}
-                >
-                  <span>{index + 1}</span>
-                  <div>
-                    <strong>{step.shortTitle}</strong>
-                    <small>{step.title}</small>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+<main className="container app-layout">
+  <section className="input-column">
+    {currentStepConfig.key !== 'intro' && (
+      <div className="progress-strip">
+        {steps.map((step, index) => {
+          const isActive = index === currentStep;
+          const isDone = index < currentStep;
 
-          {renderCurrentStep()}
+          return (
+            <div
+              key={step.key}
+              className={`progress-step ${isActive ? 'is-active' : ''} ${
+                isDone ? 'is-done' : ''
+              }`}
+            >
+              <span>{index + 1}</span>
+              <div>
+                <strong>{step.shortTitle}</strong>
+                <small>{step.title}</small>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    {renderCurrentStep()}
 
           {currentStep < resultStepIndex && (
             <article className="panel action-panel">
