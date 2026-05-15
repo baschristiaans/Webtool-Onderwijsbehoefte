@@ -6,7 +6,6 @@ import observationItems, {
 import {
   analyzeProfileBase,
   analyzeRichInterpretation,
-  buildProfileScoreOverview,
   normalizeText
 } from './lib/analysis.js';
 import buildPersonalizedAdvice from './lib/buildPersonalizedAdvice.js';
@@ -15,6 +14,39 @@ import {
   createSessionId,
   saveTrackingRecord
 } from './lib/tracking.js';
+
+const PROFILE_CARD_SUMMARIES = [
+  {
+    id: 'type1',
+    title: 'Type 1 – aangepast succesvol',
+    summary: 'presteert goed maar vermijdt risico’s'
+  },
+  {
+    id: 'type2',
+    title: 'Type 2 – uitdagend creatief',
+    summary: 'creatief, kritisch en uitdagend gedrag'
+  },
+  {
+    id: 'type3',
+    title: 'Type 3 – onderduikend',
+    summary: 'past zich aan om niet op te vallen'
+  },
+  {
+    id: 'type4',
+    title: 'Type 4 – risicoleerling',
+    summary: 'sterke onderprestatie en schoolvervreemding'
+  },
+  {
+    id: 'type5',
+    title: 'Type 5 – dubbel bijzonder',
+    summary: 'begaafdheid met andere ondersteuningsbehoeften'
+  },
+  {
+    id: 'type6',
+    title: 'Type 6 – zelfsturend autonoom',
+    summary: 'zelfstandig, doelgericht en intrinsiek gemotiveerd'
+  }
+];
 
 const TEST_OPTIONS = [
   { value: 'unknown', label: 'Niet ingevuld' },
@@ -31,11 +63,46 @@ const ZOOV_OPTIONS = [
   { value: 'no', label: 'Nee, geen ZOOV+ startsignaal' }
 ];
 
+const CHALLENGE_RESPONSE_OPTIONS = [
+  { value: 'unknown', label: 'Niet ingevuld' },
+  {
+    value:
+      'De leerling laat meer betrokkenheid zien wanneer het werk compact en echt uitdagend is.',
+    label: 'Meer betrokken bij compacte, uitdagende taken'
+  },
+  {
+    value:
+      'De leerling laat meer weerstand zien wanneer taken herhalend of te makkelijk zijn.',
+    label: 'Meer weerstand bij herhaling of makkelijke taken'
+  },
+  {
+    value:
+      'De leerling laat juist meer stabiliteit zien wanneer taken voorspelbaar en duidelijk begrensd zijn.',
+    label: 'Stabieler bij voorspelbare, begrensde taken'
+  }
+];
+
 const SETTING_OPTIONS = [
   { value: 'unknown', label: 'Niet ingevuld' },
   {
     value: 'Het zichtbare functioneren verschilt sterk per les, taak of setting.',
     label: 'Functioneren verschilt sterk per setting'
+  }
+];
+
+const EXPRESSION_OPTIONS = [
+  { value: 'unknown', label: 'Niet ingevuld' },
+  {
+    value: 'oral-stronger',
+    label: 'Mondeling duidelijk sterker dan schriftelijk'
+  },
+  {
+    value: 'written-stronger',
+    label: 'Schriftelijk duidelijk sterker dan mondeling'
+  },
+  {
+    value: 'mixed',
+    label: 'Verschil wisselt per taak'
   }
 ];
 
@@ -104,7 +171,9 @@ const ZOOV_INITIAL = {
 };
 
 const CONTEXT_INITIAL = {
+  challengeResponse: 'unknown',
   settingDifference: 'unknown',
+  expressionDifference: 'unknown',
   knownSupportInfoPresence: 'unknown',
   knownSupportInfoNote: '',
   note: ''
@@ -148,7 +217,47 @@ function formatStrength(strength) {
   return 'niet waargenomen';
 }
 
-function buildExportText({
+function replaceRoleText(text) {
+  if (!text) return text;
+  return text.replace(/intern begeleider/gi, 'intern begeleider / kwaliteitscoördinator');
+}
+
+function getCategoryLabel(category) {
+  if (category === 'core') return 'Kernobservatie';
+  if (category === 'supporting') return 'Ondersteunend signaal';
+  return 'Contextsignaal';
+}
+
+function getCategoryHelpText(category) {
+  if (category === 'core') {
+    return 'Kernobservatie = sterk profielonderscheidend signaal.';
+  }
+  if (category === 'supporting') {
+    return 'Ondersteunend signaal = telt mee, maar is minder doorslaggevend.';
+  }
+  return 'Contextsignaal = geeft aanvullende duiding, maar telt niet mee in de ruwe profielscore.';
+}
+
+function getOverlapSupportItems(profileBase) {
+  if (!profileBase.overlapProfileId || !profileBase.sortedProfiles) return [];
+
+  const overlapProfile = profileBase.sortedProfiles.find(
+    (item) => item.profileId === profileBase.overlapProfileId
+  );
+
+  if (!overlapProfile?.evidence?.length) return [];
+
+  const strongestIds = new Set(
+    (profileBase.strongestObservations || []).map((item) => item.id)
+  );
+
+  const filtered = overlapProfile.evidence.filter((item) => !strongestIds.has(item.id));
+  const source = filtered.length > 0 ? filtered : overlapProfile.evidence;
+
+  return source.slice(0, 3);
+}
+
+function buildPrintReportHtml({
   student,
   zoovSignal,
   contextInput,
@@ -157,105 +266,240 @@ function buildExportText({
   profileBase,
   interpretation,
   advice,
-  scoreOverview,
-  profilesById,
-  notes
+  bestProfile,
+  overlapProfile
 }) {
-  const bestProfile = profileBase.topProfileId
-    ? profilesById[profileBase.topProfileId]
-    : null;
-  const overlapProfile = profileBase.overlapProfileId
-    ? profilesById[profileBase.overlapProfileId]
-    : null;
+  const strongestItems = profileBase.strongestObservations || [];
+  const overlapItems = getOverlapSupportItems(profileBase);
+  const printableAdvice = advice.prioritizedNeeds || [];
+  const printableFollowUp = (advice.followUpSteps || []).map(replaceRoleText);
+  const printableHomeAttention = replaceRoleText(advice.homeAttention || '');
+  const printableCaution = replaceRoleText(advice.caution || '');
 
-  const lines = [
-    'Webtool profiel en onderwijsbehoefte',
-    '',
-    'Leerlinggegevens',
-    `Naam: ${student.name || '-'}`,
-    `Groep: ${student.group || '-'}`,
-    `Ingevuld door: ${student.observer || '-'}`,
-    `Datum: ${student.date || '-'}`,
-    '',
-    'Aanleiding',
-    `ZOOV+: ${ZOOV_EXPORT_LABELS[zoovSignal.status] || zoovSignal.status}`,
-    `Notitie: ${zoovSignal.note || '-'}`,
-    '',
-    'Context',
-    `Bekende ondersteuningsinformatie: ${
-      KNOWN_SUPPORT_INFO_LABELS[contextInput.knownSupportInfoPresence] ||
-      contextInput.knownSupportInfoPresence
-    }`,
-    `Dossiernotitie: ${contextInput.knownSupportInfoNote || '-'}`,
-    `Schoolcontext notitie: ${contextInput.note || '-'}`,
-    '',
-    'Thuissituatie',
-    `Patroon: ${HOME_PATTERN_LABELS[homeInput.pattern] || homeInput.pattern}`,
-    `Samenvatting: ${homeInput.summary || '-'}`,
-    '',
-    'Toetsgegevens',
-    ...Object.entries(testScores).map(
-      ([key, value]) =>
-        `${TEST_FIELD_LABELS[key]}: ${TEST_EXPORT_LABELS[value] || value}`
-    ),
-    '',
-    'Profielbeeld',
-    `Best passend profiel: ${bestProfile ? formatProfileHeading(bestProfile) : '-'}`,
-    `Overlap: ${overlapProfile ? formatProfileHeading(overlapProfile) : '-'}`,
-    '',
-    'Score-overzicht per profiel',
-    ...scoreOverview.map(
-      (item) => `${item.shortTitle} - ${item.title}: ${item.score}`
-    ),
-    '',
-    'Prestatiebeeld',
-    interpretation.performanceSummary,
-    '',
-    'Discrepantiesignalen',
-    ...(interpretation.discrepancySignals.length > 0
-      ? interpretation.discrepancySignals
-      : ['Geen expliciete discrepantiesignalen op basis van de huidige invoer.']),
-    '',
-    'Contextsignalen',
-    ...(profileBase.contextSignals.length > 0
-      ? profileBase.contextSignals.map(
-          (signal) => `${toDisplay(signal.prompt)} (${formatStrength(signal.strength)})`
-        )
-      : ['Geen contextsignalen ingevuld.']),
-    '',
-    'Sterkst scorende observaties',
-    ...(profileBase.strongestObservations.length > 0
-      ? profileBase.strongestObservations.map(
-          (item) =>
-            `${toDisplay(item.prompt)} (${item.strengthLabel}; bijdrage ${item.scoreContribution})`
-        )
-      : ['Nog geen observaties die een specifieke profielrichting dragen.']),
-    '',
-    'Werkhypothese',
-    advice.workHypothesis,
-    advice.shortInterpretation,
-    '',
-    'Geprioriteerde onderwijsbehoeften',
-    ...advice.prioritizedNeeds.flatMap((item) => [
-      `${item.area}${item.sharedByOverlap ? ' (extra relevant bij overlap)' : ''}`,
-      `Onderwijsbehoefte: ${item.need}`,
-      `Advies: ${item.advice}`,
-      `Waarom: ${item.reason}`
-    ]),
-    '',
-    'Vervolg',
-    ...advice.followUpSteps,
-    '',
-    'Notities',
-    notes || '-',
-    '',
-    'Kanttekening',
-    advice.caution,
-    'Dit is geen diagnose.',
-    'Context, dossierinformatie, thuissituatie, ZOOV+ en toetsgegevens tellen niet mee in de ruwe profielscore.'
-  ];
+  const testRows = Object.entries(testScores)
+    .map(
+      ([key, value]) => `
+        <tr>
+          <td>${TEST_FIELD_LABELS[key]}</td>
+          <td>${TEST_EXPORT_LABELS[value] || value}</td>
+        </tr>
+      `
+    )
+    .join('');
 
-  return lines.join('\n');
+  const strongestHtml = strongestItems.length
+    ? strongestItems
+        .map(
+          (item) => `
+            <li>
+              ${toDisplay(item.prompt)}
+              <span class="print-meta">(${item.strengthLabel})</span>
+            </li>
+          `
+        )
+        .join('')
+    : '<li>Er zijn nog geen observaties die een duidelijke profielrichting dragen.</li>';
+
+  const overlapHtml = overlapProfile
+    ? `
+      <div class="print-block compact-note">
+        <strong>Overlap</strong>
+        <p>
+          Meerdere profielen kunnen kenmerken delen. Profieloverlap komt in de praktijk regelmatig voor.
+          De tool gebruikt profielen als interpretatiekader en niet als diagnose.
+        </p>
+      </div>
+      <div class="print-block">
+        <strong>Signalen die overlap ondersteunen</strong>
+        <ul>
+          ${
+            overlapItems.length
+              ? overlapItems
+                  .map(
+                    (item) => `<li>${toDisplay(item.prompt)} <span class="print-meta">(${item.strengthLabel})</span></li>`
+                  )
+                  .join('')
+              : '<li>De overlap wordt vooral zichtbaar in het totaalbeeld van de observaties.</li>'
+          }
+        </ul>
+      </div>
+    `
+    : '';
+
+  const discrepancyHtml = interpretation.discrepancySignals.length
+    ? interpretation.discrepancySignals
+        .map((signal) => `<li>${toDisplay(signal)}</li>`)
+        .join('')
+    : '<li>Er zijn op basis van de huidige invoer nog geen expliciete discrepantiesignalen zichtbaar.</li>';
+
+  const adviceHtml = printableAdvice
+    .map(
+      (item) => `
+        <div class="print-card">
+          <div class="print-area-row">
+            <strong>${item.area}</strong>
+            ${item.sharedByOverlap ? '<span class="print-tag">Extra relevant bij overlap</span>' : ''}
+          </div>
+          <p><strong>Onderwijsbehoefte:</strong> ${replaceRoleText(item.need)}</p>
+          <p><strong>Advies:</strong> ${replaceRoleText(item.advice)}</p>
+        </div>
+      `
+    )
+    .join('');
+
+  return `
+    <html>
+      <head>
+        <title>Werkhypothese profiel en onderwijsbehoefte</title>
+        <style>
+          * { box-sizing: border-box; }
+          body {
+            font-family: Inter, Arial, sans-serif;
+            color: #1f2937;
+            margin: 28px;
+            line-height: 1.45;
+            font-size: 14px;
+            background: #ffffff;
+          }
+          h1, h2, h3, p { margin: 0; }
+          h1 { font-size: 24px; margin-bottom: 6px; }
+          h2 { font-size: 18px; margin-bottom: 10px; }
+          .subtle { color: #4b5563; }
+          .section { margin-top: 22px; }
+          .print-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+          }
+          .print-block, .print-card {
+            border: 1px solid #dbe3ec;
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 10px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          .compact-note { background: #f8fafc; }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+          }
+          td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 8px 0;
+            vertical-align: top;
+          }
+          ul { margin: 8px 0 0 18px; padding: 0; }
+          li { margin-bottom: 6px; }
+          .print-meta { color: #6b7280; font-size: 12px; }
+          .print-tag {
+            display: inline-block;
+            border: 1px solid #dbe3ec;
+            border-radius: 999px;
+            padding: 4px 8px;
+            font-size: 12px;
+            color: #355f86;
+            background: #eef4fa;
+          }
+          .print-area-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+            margin-bottom: 8px;
+          }
+          .print-card p + p { margin-top: 8px; }
+          @media print {
+            body { margin: 16mm; }
+            .print-grid { grid-template-columns: 1fr 1fr; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Werkhypothese profiel en onderwijsbehoefte</h1>
+        <p class="subtle">Print- en PDF-weergave voor bespreking met collega’s, ouders of andere betrokkenen.</p>
+
+        <div class="section print-grid">
+          <div class="print-block">
+            <h2>Leerlinggegevens</h2>
+            <p><strong>Naam:</strong> ${student.name || '-'}</p>
+            <p><strong>Groep:</strong> ${student.group || '-'}</p>
+            <p><strong>Ingevuld door:</strong> ${student.observer || '-'}</p>
+            <p><strong>Datum:</strong> ${student.date || '-'}</p>
+          </div>
+          <div class="print-block">
+            <h2>Aanleiding</h2>
+            <p><strong>ZOOV+:</strong> ${ZOOV_EXPORT_LABELS[zoovSignal.status] || zoovSignal.status}</p>
+            <p><strong>Notitie:</strong> ${zoovSignal.note || '-'}</p>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="print-block">
+            <h2>Profielbeeld</h2>
+            <p><strong>Best passend profiel:</strong> ${bestProfile ? formatProfileHeading(bestProfile) : 'Geen duidelijke profielrichting zichtbaar'}</p>
+            ${overlapProfile ? `<p><strong>Overlap:</strong> ${formatProfileHeading(overlapProfile)}</p>` : ''}
+            <p style="margin-top:10px;"><strong>Werkhypothese:</strong> ${replaceRoleText(advice.workHypothesis)}</p>
+            <p style="margin-top:8px;">${replaceRoleText(advice.shortInterpretation)}</p>
+          </div>
+          ${overlapHtml}
+        </div>
+
+        <div class="section print-grid">
+          <div class="print-block">
+            <h2>Waarom deze uitkomst?</h2>
+            <ul>${strongestHtml}</ul>
+          </div>
+          <div class="print-block">
+            <h2>Toetsgegevens</h2>
+            <table>${testRows}</table>
+          </div>
+        </div>
+
+        <div class="section print-block">
+          <h2>Prestatiebeeld en discrepanties</h2>
+          <p>${toDisplay(interpretation.performanceSummary)}</p>
+          <p style="margin-top:10px;" class="subtle">
+            Verschillen tussen observaties en toetsgegevens kunnen wijzen op onderpresteren, wisselend functioneren of maskering van mogelijkheden of ondersteuningsbehoeften. Deze duiding is ondersteunend en niet-diagnostisch.
+          </p>
+          <ul>${discrepancyHtml}</ul>
+        </div>
+
+        <div class="section">
+          <h2>Onderwijsbehoeften en adviezen</h2>
+          ${adviceHtml}
+        </div>
+
+        <div class="section print-block">
+          <h2>Vervolg</h2>
+          <ul>
+            ${printableFollowUp.map((step) => `<li>${step}</li>`).join('')}
+            ${printableHomeAttention ? `<li>Thuissituatie als aandachtspunt: ${printableHomeAttention}</li>` : ''}
+          </ul>
+        </div>
+
+        <div class="section print-block compact-note">
+          <h2>Kanttekening</h2>
+          <p>${printableCaution}</p>
+          <p style="margin-top:8px;">Dit is geen diagnose.</p>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+function openPrintWindow(html) {
+  const printWindow = window.open('', '_blank', 'width=1000,height=1200');
+  if (!printWindow) return;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.onload = () => {
+    printWindow.print();
+  };
 }
 
 function App() {
@@ -293,17 +537,13 @@ function App() {
     () =>
       analyzeRichInterpretation({
         profileBase,
+        zoovSignal,
         contextInput,
         homeInput,
         testScores,
         notes
       }),
-    [profileBase, contextInput, homeInput, testScores, notes]
-  );
-
-  const scoreOverview = useMemo(
-    () => buildProfileScoreOverview(profileBase, profilesById),
-    [profileBase, profilesById]
+    [profileBase, zoovSignal, contextInput, homeInput, testScores, notes]
   );
 
   const advice = useMemo(
@@ -344,59 +584,37 @@ function App() {
     ]
   );
 
-  const bestProfile = profileBase.topProfileId
-    ? profilesById[profileBase.topProfileId]
-    : null;
-  const overlapProfile = profileBase.overlapProfileId
-    ? profilesById[profileBase.overlapProfileId]
-    : null;
+  const bestProfile =
+    profileBase.directionKey === 'no_signal' || !profileBase.topProfileId
+      ? null
+      : profilesById[profileBase.topProfileId];
+
+  const overlapProfile =
+    profileBase.directionKey === 'overlap' && profileBase.overlapProfileId
+      ? profilesById[profileBase.overlapProfileId]
+      : null;
 
   const steps = useMemo(
     () => [
-      {
-        key: 'student',
-        title: 'Leerlinggegevens en aanleiding',
-        shortTitle: 'Stap 1'
-      },
-      {
-        key: 'tests',
-        title: 'Toetsgegevens',
-        shortTitle: 'Stap 2'
-      },
-      {
-        key: 'context',
-        title: 'Aanvullende context',
-        shortTitle: 'Stap 3'
-      },
-      {
-        key: 'observations',
-        title: 'Observaties',
-        shortTitle: 'Stap 4'
-      },
-      {
-        key: 'review',
-        title: 'Controle en disclaimer',
-        shortTitle: 'Stap 5'
-      },
-      {
-        key: 'results',
-        title: 'Uitkomst',
-        shortTitle: 'Stap 6'
-      }
+      { key: 'intro', title: 'Introductie', shortTitle: 'Start' },
+      { key: 'student', title: 'Leerlinggegevens en aanleiding', shortTitle: 'Stap 1' },
+      { key: 'tests', title: 'Toetsgegevens', shortTitle: 'Stap 2' },
+      { key: 'context', title: 'Context en thuissituatie', shortTitle: 'Stap 3' },
+      { key: 'observations', title: 'Observaties', shortTitle: 'Stap 4' },
+      { key: 'review', title: 'Controle en disclaimer', shortTitle: 'Stap 5' },
+      { key: 'results', title: 'Uitkomst', shortTitle: 'Resultaat' }
     ],
     []
   );
 
   const reviewStepIndex = steps.findIndex((step) => step.key === 'review');
   const resultStepIndex = steps.findIndex((step) => step.key === 'results');
-  const observationsStepIndex = steps.findIndex((step) => step.key === 'observations');
   const currentStepConfig = steps[currentStep];
-
-  const isObservationPhase = currentStepConfig?.key === 'observations';
   const currentObservationItem = observationItems[currentObservationIndex] || null;
   const currentObservationValue = currentObservationItem
     ? observationAnswers[currentObservationItem.id]
     : null;
+
   const observationProgressPercent = Math.round(
     ((currentObservationIndex + 1) / observationItems.length) * 100
   );
@@ -417,12 +635,11 @@ function App() {
   useEffect(() => {
     if (currentStepConfig?.key !== 'results') return;
 
-const canTrackResult =
-  profileBase.directionKey === 'no_signal' ||
-  Boolean(profileBase.topProfileId);
+    const canTrackResult =
+      profileBase.directionKey === 'no_signal' || Boolean(profileBase.topProfileId);
 
-if (!canTrackResult) return;
-if (lastTrackedSignatureRef.current === trackingSignature) return;
+    if (!canTrackResult) return;
+    if (lastTrackedSignatureRef.current === trackingSignature) return;
 
     const payload = buildTrackingPayload({
       sessionId,
@@ -504,217 +721,111 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
     lastTrackedSignatureRef.current = null;
   };
 
-  const handleExport = () => {
-    const exportText = buildExportText({
-      student,
-      zoovSignal,
-      contextInput,
-      homeInput,
-      testScores,
-      profileBase,
-      interpretation,
-      advice,
-      scoreOverview,
-      profilesById,
-      notes
-    });
-    const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `profielduiding-${student.name || 'leerling'}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handlePrintObservationForm = () => {
-    const printWindow = window.open('', '_blank', 'width=900,height=1200');
-    if (!printWindow) return;
-
-    const groupedItems = observationItems.reduce((groups, item) => {
-      const groupLabel = toDisplay(item.domainLabel);
-      if (!groups[groupLabel]) {
-        groups[groupLabel] = [];
-      }
-      groups[groupLabel].push(item);
-      return groups;
-    }, {});
-
-    const groupedHtml = Object.entries(groupedItems)
-      .map(
-        ([groupLabel, items]) => `
-          <section class="observation-group">
-            <h2 class="group-title">${groupLabel}</h2>
-            ${items
-              .map(
-                (item) => `
-                  <div class="question-block">
-                    <div class="question-text">${toDisplay(item.prompt)}</div>
-                    <div class="question-options">
-                      <label><input type="checkbox" /> Niet waargenomen</label>
-                      <label><input type="checkbox" /> Soms zichtbaar</label>
-                      <label><input type="checkbox" /> Regelmatig zichtbaar</label>
-                      <label><input type="checkbox" /> Duidelijk zichtbaar</label>
-                    </div>
-                  </div>
-                `
-              )
-              .join('')}
-          </section>
-        `
-      )
-      .join('');
-
-    const html = `
-      <html>
-        <head>
-          <title>Printbaar observatieformulier</title>
-          <style>
-            * { box-sizing: border-box; }
-            body {
-              font-family: Arial, sans-serif;
-              color: #1f2a37;
-              margin: 28px;
-              line-height: 1.4;
-              font-size: 14px;
-            }
-            h1 { font-size: 24px; margin: 0 0 6px 0; }
-            .subtitle { margin: 0 0 20px 0; color: #526274; }
-            .meta {
-              margin-bottom: 24px;
-              padding: 16px;
-              border: 1px solid #d9e1ea;
-              border-radius: 8px;
-              background: #f8fafc;
-            }
-            .meta-row { margin-bottom: 10px; }
-            .meta-row:last-child { margin-bottom: 0; }
-            .line {
-              display: inline-block;
-              min-width: 260px;
-              border-bottom: 1px solid #6b7280;
-              margin-left: 8px;
-              height: 18px;
-              vertical-align: bottom;
-            }
-            .observation-group { margin-bottom: 28px; }
-            .group-title {
-              font-size: 18px;
-              margin: 0 0 12px 0;
-              page-break-after: avoid;
-              break-after: avoid;
-            }
-            .question-block {
-              margin-bottom: 16px;
-              padding: 12px;
-              border: 1px solid #d9e1ea;
-              border-radius: 8px;
-              break-inside: avoid;
-              page-break-inside: avoid;
-            }
-            .question-text { font-weight: 600; margin-bottom: 10px; }
-            .question-options {
-              display: flex;
-              flex-wrap: wrap;
-              gap: 14px 18px;
-            }
-            .question-options label {
-              display: inline-flex;
-              align-items: center;
-              gap: 6px;
-              white-space: nowrap;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>Printbaar observatieformulier</h1>
-          <p class="subtitle">Webtool profiel en onderwijsbehoefte</p>
-          <div class="meta">
-            <div class="meta-row"><strong>Naam leerling:</strong><span class="line"></span></div>
-            <div class="meta-row"><strong>Groep:</strong><span class="line"></span></div>
-            <div class="meta-row"><strong>Datum:</strong><span class="line"></span></div>
-            <div class="meta-row"><strong>Ingevuld door:</strong><span class="line"></span></div>
-          </div>
-          ${groupedHtml}
-        </body>
-      </html>
-    `;
-
-    printWindow.document.open();
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+  const handlePrintReport = () => {
+    openPrintWindow(
+      buildPrintReportHtml({
+        student,
+        zoovSignal,
+        contextInput,
+        homeInput,
+        testScores,
+        profileBase,
+        interpretation,
+        advice,
+        bestProfile,
+        overlapProfile
+      })
+    );
   };
 
   function isStepComplete(step) {
     if (!step) return false;
 
+    if (step.key === 'intro') return true;
     if (step.key === 'student') {
-      return Boolean(
-        student.name.trim() && student.group.trim() && student.observer.trim()
-      );
+      return Boolean(student.name.trim() && student.group.trim() && student.observer.trim());
     }
-
     if (step.key === 'tests') return true;
     if (step.key === 'context') return true;
-
-    if (step.key === 'observations') {
-      return currentObservationValue !== null && currentObservationValue !== undefined;
-    }
-
-    if (step.key === 'review') {
-      return isChecklistConfirmed && isDisclaimerConfirmed;
-    }
-
+    if (step.key === 'observations') return currentObservationValue !== null;
+    if (step.key === 'review') return isChecklistConfirmed && isDisclaimerConfirmed;
     if (step.key === 'results') return true;
 
     return true;
   }
 
   const canGoNext = isStepComplete(currentStepConfig);
-  const canGoBack =
-    currentStep > 0 || (isObservationPhase && currentObservationIndex > 0);
+  const canGoBack = currentStep > 0;
 
   const handleNext = () => {
-    if (!canGoNext) return;
+    if (!canGoNext || currentStep >= steps.length - 1) return;
 
-    if (currentStepConfig.key === 'observations') {
+    if (currentStepConfig?.key === 'observations') {
       if (currentObservationIndex < observationItems.length - 1) {
         setCurrentObservationIndex((value) => value + 1);
         return;
       }
-      setCurrentStep(reviewStepIndex);
-      return;
     }
 
-    if (currentStep < steps.length - 1) {
-      setCurrentStep((value) => value + 1);
-    }
+    setCurrentStep((value) => value + 1);
   };
 
   const handlePrevious = () => {
     if (!canGoBack) return;
 
-    if (currentStepConfig.key === 'review') {
-      setCurrentStep(observationsStepIndex);
-      setCurrentObservationIndex(observationItems.length - 1);
+    if (currentStepConfig?.key === 'observations' && currentObservationIndex > 0) {
+      setCurrentObservationIndex((value) => value - 1);
       return;
     }
 
-    if (currentStepConfig.key === 'observations') {
-      if (currentObservationIndex > 0) {
-        setCurrentObservationIndex((value) => value - 1);
-        return;
-      }
+    if (currentStepConfig?.key === 'review') {
       setCurrentStep((value) => value - 1);
       return;
     }
 
-    if (currentStep > 0) {
-      setCurrentStep((value) => value - 1);
-    }
+    setCurrentStep((value) => value - 1);
   };
+
+  function renderIntroStep() {
+    return (
+      <article className="panel intro-panel">
+        <div className="panel-head">
+          <div>
+            <p className="section-label">Start</p>
+            <h2>Waarvoor gebruik je deze tool?</h2>
+          </div>
+        </div>
+
+        <div className="intro-points">
+          <div className="secondary-card compact-card">
+            <strong>Observeerbaar functioneren eerst</strong>
+            <p>De tool ondersteunt bij het interpreteren van observeerbaar functioneren in de schoolcontext.</p>
+          </div>
+          <div className="secondary-card compact-card">
+            <strong>Vertaling naar onderwijsbehoeften</strong>
+            <p>De tool helpt signalen te vertalen naar mogelijke onderwijsbehoeften en handelingssuggesties.</p>
+          </div>
+          <div className="secondary-card compact-card">
+            <strong>Profielen als interpretatiekader</strong>
+            <p>De profielen van Betts &amp; Neihart zijn richtinggevend en geen labels of diagnose.</p>
+          </div>
+          <div className="secondary-card compact-card">
+            <strong>Overlap is mogelijk</strong>
+            <p>Meerdere profielen kunnen tegelijk zichtbaar zijn. Profieloverlap komt in de praktijk regelmatig voor.</p>
+          </div>
+        </div>
+
+        <div className="profile-card-grid">
+          {PROFILE_CARD_SUMMARIES.map((profile) => (
+            <article className="profile-card" key={profile.id}>
+              <strong>{profile.title}</strong>
+              <p>{profile.summary}</p>
+            </article>
+          ))}
+        </div>
+      </article>
+    );
+  }
 
   function renderStudentStep() {
     return (
@@ -724,14 +835,6 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
             <p className="section-label">Stap 1</p>
             <h2>Leerlinggegevens en aanleiding</h2>
           </div>
-
-          <button
-            type="button"
-            className="ghost-button"
-            onClick={handlePrintObservationForm}
-          >
-            Print observatieformulier
-          </button>
         </div>
 
         <div className="field-grid two-columns">
@@ -808,13 +911,9 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
             <h2>Toetsgegevens</h2>
           </div>
         </div>
-
         <p className="helper-text">
-          Vul hier het prestatiebeeld in. Deze gegevens tellen niet mee in de ruwe
-          profielscore, maar worden wel gebruikt voor het prestatiebeeld en eventuele
-          discrepantiesignalen.
+          Deze gegevens tellen niet mee in de ruwe profielscore, maar helpen wel om het prestatiebeeld en mogelijke discrepanties te duiden.
         </p>
-
         <div className="field-grid two-columns">
           {Object.entries(TEST_FIELD_LABELS).map(([key, label]) => (
             <label className="field" key={key}>
@@ -842,18 +941,58 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
         <div className="panel-head">
           <div>
             <p className="section-label">Stap 3</p>
-            <h2>Aanvullende context</h2>
+            <h2>Context en thuissituatie</h2>
           </div>
         </div>
 
         <div className="field-grid">
           <label className="field">
+            <span>Reactie op uitdaging</span>
+            <select
+              value={contextInput.challengeResponse}
+              onChange={(event) => handleContextChange('challengeResponse', event.target.value)}
+            >
+              {CHALLENGE_RESPONSE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Verschillen tussen settings</span>
+            <select
+              value={contextInput.settingDifference}
+              onChange={(event) => handleContextChange('settingDifference', event.target.value)}
+            >
+              {SETTING_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Mondeling en schriftelijk functioneren</span>
+            <select
+              value={contextInput.expressionDifference}
+              onChange={(event) => handleContextChange('expressionDifference', event.target.value)}
+            >
+              {EXPRESSION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
             <span>Bekende relevante ondersteuningsinformatie</span>
             <select
               value={contextInput.knownSupportInfoPresence}
-              onChange={(event) =>
-                handleContextChange('knownSupportInfoPresence', event.target.value)
-              }
+              onChange={(event) => handleContextChange('knownSupportInfoPresence', event.target.value)}
             >
               {KNOWN_SUPPORT_INFO_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -863,18 +1002,14 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
             </select>
           </label>
 
-          {contextInput.knownSupportInfoPresence === 'yes' && (
-            <label className="field">
-              <span>Korte dossiernotitie</span>
-              <textarea
-                rows="3"
-                value={contextInput.knownSupportInfoNote}
-                onChange={(event) =>
-                  handleContextChange('knownSupportInfoNote', event.target.value)
-                }
-              />
-            </label>
-          )}
+          <label className="field">
+            <span>Korte dossiernotitie</span>
+            <textarea
+              rows="3"
+              value={contextInput.knownSupportInfoNote}
+              onChange={(event) => handleContextChange('knownSupportInfoNote', event.target.value)}
+            />
+          </label>
 
           <label className="field">
             <span>Aanvullende schoolcontext</span>
@@ -917,11 +1052,11 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
     );
   }
 
-  function renderObservationStep(item) {
-    if (!item) return null;
+  function renderObservationStep() {
+    if (!currentObservationItem) return null;
 
     return (
-      <article className="panel">
+      <article className="panel observation-step-panel">
         <div className="panel-head">
           <div>
             <p className="section-label">Stap 4</p>
@@ -930,64 +1065,32 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
               Vraag {currentObservationIndex + 1} van {observationItems.length}
             </p>
           </div>
+          <div className="progress-badge">{observationProgressPercent}%</div>
         </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <div
-            style={{
-              width: '100%',
-              height: '10px',
-              background: '#e8eef5',
-              borderRadius: '999px',
-              overflow: 'hidden'
-            }}
-          >
-            <div
-              style={{
-                width: `${observationProgressPercent}%`,
-                height: '100%',
-                background: '#4f7cff',
-                borderRadius: '999px',
-                transition: 'width 0.2s ease'
-              }}
-            />
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginTop: '0.5rem',
-              fontSize: '0.9rem',
-              color: '#5b6b7f'
-            }}
-          >
-            <span>{toDisplay(item.domainLabel)}</span>
-            <span>{observationProgressPercent}% voltooid</span>
-          </div>
+        <div className="observation-step-meta">
+          <span className="pill">{toDisplay(currentObservationItem.domainLabel)}</span>
+          <span className={`chip chip-${currentObservationItem.category}`}>
+            {getCategoryLabel(currentObservationItem.category)}
+          </span>
         </div>
 
-        <article className="observation-card">
-          <div className="observation-card-head">
-            <p>{toDisplay(item.prompt)}</p>
-            <span className={`chip chip-${item.category}`}>
-              {item.category === 'core'
-                ? 'Kernobservatie'
-                : item.category === 'supporting'
-                  ? 'Ondersteunend'
-                  : 'Contextsignaal'}
-            </span>
-          </div>
+        <p className="helper-text compact-helper">
+          {getCategoryHelpText(currentObservationItem.category)}
+        </p>
 
-          <div className="option-row">
+        <article className="observation-focus-card">
+          <h3>{toDisplay(currentObservationItem.prompt)}</h3>
+          <div className="option-row single-question-row">
             {OBSERVATION_SCORE_OPTIONS.map((option) => (
               <label className="option-card" key={option.value}>
                 <input
                   type="radio"
-                  name={item.id}
+                  name={currentObservationItem.id}
                   value={option.value}
-                  checked={observationAnswers[item.id] === option.value}
+                  checked={observationAnswers[currentObservationItem.id] === option.value}
                   onChange={(event) =>
-                    handleObservationChange(item.id, event.target.value)
+                    handleObservationChange(currentObservationItem.id, event.target.value)
                   }
                 />
                 <span>{option.label}</span>
@@ -1039,8 +1142,7 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
           <div className="secondary-card">
             <strong>Belangrijke kanttekening</strong>
             <p>
-              Deze tool ondersteunt bij profielduiding en onderwijsafstemming.
-              De uitkomst is een werkhypothese en geen diagnostische tool.
+              Deze tool ondersteunt bij profielduiding en onderwijsafstemming. De uitkomst is een werkhypothese en geen diagnose of classificatie.
             </p>
           </div>
 
@@ -1050,9 +1152,7 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
               checked={isDisclaimerConfirmed}
               onChange={(event) => setIsDisclaimerConfirmed(event.target.checked)}
             />
-            <span>
-              Ik begrijp dat deze tool een hulpmiddel is en geen diagnostische tool.
-            </span>
+            <span>Ik begrijp dat deze tool een hulpmiddel is en geen diagnostische tool.</span>
           </label>
         </div>
       </article>
@@ -1060,14 +1160,7 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
   }
 
   function renderResultsStep() {
-    if (!bestProfile && profileBase.directionKey !== 'no_signal') {
-      return (
-        <article className="panel caution-panel">
-          <p className="section-label">Uitkomst</p>
-          <p>Er is nog geen profieluitkomst beschikbaar.</p>
-        </article>
-      );
-    }
+    const overlapSupportItems = getOverlapSupportItems(profileBase);
 
     return (
       <div className="output-column">
@@ -1076,15 +1169,8 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
             <div>
               <p className="section-label">Profielbeeld</p>
               <h2>
-                {bestProfile
-                  ? formatProfileHeading(bestProfile)
-                  : advice.resultHeading}
+                {bestProfile ? formatProfileHeading(bestProfile) : 'Geen duidelijke profielrichting zichtbaar'}
               </h2>
-              {bestProfile && (
-                <p className="helper-text">
-                  {profileBase.profileStatusById[bestProfile.id]?.label}
-                </p>
-              )}
             </div>
             {bestProfile && (
               <button
@@ -1097,71 +1183,73 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
               </button>
             )}
           </div>
+
+          <p className="lead-text">{replaceRoleText(advice.workHypothesis)}</p>
+
           {overlapProfile && (
-            <div className="meta-pills">
-              <span className="pill subtle-pill">
-                Overlap met {toDisplay(overlapProfile.shortTitle)}
-              </span>
+            <div className="result-note-block">
+              <strong>Overlap</strong>
+              <p>
+                Meerdere profielen kunnen kenmerken delen. Profieloverlap komt in de praktijk regelmatig voor. De tool gebruikt profielen als interpretatiekader en niet als diagnose.
+              </p>
             </div>
           )}
         </article>
 
         <article className="panel">
-          <p className="section-label">Samenvatting</p>
-          <h3>Werkhypothese</h3>
-          <p>{advice.workHypothesis}</p>
-          <p>{advice.shortInterpretation}</p>
-        </article>
+          <p className="section-label">Waarom deze uitkomst?</p>
+          <div className="why-block">
+            <div className="why-section">
+              <strong>Observaties die het zwaarst meewogen</strong>
+              <ul className="list compact-list">
+                {(profileBase.strongestObservations || []).length > 0 ? (
+                  profileBase.strongestObservations.slice(0, 5).map((item) => (
+                    <li key={item.id}>
+                      {toDisplay(item.prompt)}
+                      <span className="inline-meta"> ({item.strengthLabel})</span>
+                    </li>
+                  ))
+                ) : (
+                  <li>Er zijn nog geen observaties die een duidelijke profielrichting dragen.</li>
+                )}
+              </ul>
+            </div>
 
-        <article className="panel">
-          <p className="section-label">Score-overzicht</p>
-          <div className="score-list">
-            {scoreOverview.map((item) => (
-              <div className="score-row" key={item.profileId}>
-                <div>
-                  <strong>{item.shortTitle}</strong>
-                  <span>{item.title}</span>
-                  <small>{item.status.label}</small>
-                </div>
-                <strong>{item.score}</strong>
+            {overlapProfile && (
+              <div className="why-section">
+                <strong>Signalen die overlap ondersteunen</strong>
+                <ul className="list compact-list">
+                  {overlapSupportItems.length > 0 ? (
+                    overlapSupportItems.map((item) => (
+                      <li key={item.id}>
+                        {toDisplay(item.prompt)}
+                        <span className="inline-meta"> ({item.strengthLabel})</span>
+                      </li>
+                    ))
+                  ) : (
+                    <li>De overlap wordt vooral zichtbaar in het totale patroon van observaties.</li>
+                  )}
+                </ul>
               </div>
-            ))}
+            )}
           </div>
         </article>
 
         <article className="panel">
-          <p className="section-label">Prestatiebeeld</p>
-          <h3>{interpretation.performanceLabel}</h3>
-          <p>{interpretation.performanceSummary}</p>
-        </article>
-
-        <article className="panel">
-          <p className="section-label">Aanvullende signalen</p>
-          {profileBase.contextSignals.length > 0 ||
-          interpretation.interpretationSignals.length > 0 ? (
-            <ul className="list">
-              {interpretation.interpretationSignals.map((signal) => (
-                <li key={signal.id}>{toDisplay(signal.prompt)}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="helper-text">Nog geen aanvullende signalen ingevuld.</p>
-          )}
-        </article>
-
-        <article className="panel">
-          <p className="section-label">Discrepantiesignalen</p>
+          <p className="section-label">Prestatiebeeld en discrepanties</p>
+          <h3>{toDisplay(interpretation.performanceLabel)}</h3>
+          <p>{toDisplay(interpretation.performanceSummary)}</p>
+          <p className="helper-text discrepancy-helper">
+            Verschillen tussen observaties en toetsgegevens kunnen wijzen op onderpresteren, wisselend functioneren of maskering van mogelijkheden of ondersteuningsbehoeften. Deze duiding is ondersteunend en niet-diagnostisch.
+          </p>
           {interpretation.discrepancySignals.length > 0 ? (
-            <ul className="list">
+            <ul className="list compact-list">
               {interpretation.discrepancySignals.map((signal) => (
                 <li key={signal}>{toDisplay(signal)}</li>
               ))}
             </ul>
           ) : (
-            <p className="helper-text">
-              Op basis van de huidige invoer zijn er nog geen expliciete
-              discrepantiesignalen zichtbaar.
-            </p>
+            <p className="helper-text">Op basis van de huidige invoer zijn er nog geen expliciete discrepantiesignalen zichtbaar.</p>
           )}
         </article>
 
@@ -1170,19 +1258,18 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
           <div className="advice-list">
             {advice.prioritizedNeeds.map((item) => (
               <article className="advice-card" key={item.area}>
-                <span className="area-label">{item.area}</span>
+                <div className="advice-card-headline">
+                  <span className="area-label">{item.area}</span>
+                  {item.sharedByOverlap && (
+                    <span className="pill subtle-pill">Extra relevant bij overlap</span>
+                  )}
+                </div>
                 <p>
-                  <strong>Onderwijsbehoefte:</strong> {item.need}
+                  <strong>Onderwijsbehoefte:</strong> {replaceRoleText(item.need)}
                 </p>
                 <p>
-                  <strong>Advies:</strong> {item.advice}
+                  <strong>Advies:</strong> {replaceRoleText(item.advice)}
                 </p>
-                <p>
-                  <strong>Waarom:</strong> {item.reason}
-                </p>
-                {item.sharedByOverlap && (
-                  <span className="pill subtle-pill">Extra relevant bij overlap</span>
-                )}
               </article>
             ))}
           </div>
@@ -1190,45 +1277,39 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
 
         <article className="panel">
           <p className="section-label">Vervolg</p>
-          <ul className="list">
-            {advice.followUpSteps.map((step) => (
-              <li key={step}>{step}</li>
+          <ul className="list compact-list">
+            {(advice.followUpSteps || []).map((step) => (
+              <li key={step}>{replaceRoleText(step)}</li>
             ))}
             {advice.homeAttention && (
-              <li>Thuissituatie als aandachtspunt: {advice.homeAttention}</li>
+              <li>Thuissituatie als aandachtspunt: {replaceRoleText(advice.homeAttention)}</li>
             )}
           </ul>
         </article>
 
         <article className="panel caution-panel">
-  <p className="section-label">Kanttekening</p>
-  <p>{advice.caution}</p>
-  {advice.adviceSources?.length > 0 && (
-    <p className="result-sources">
-      Bronnen: {advice.adviceSources.join('; ')}
-    </p>
-  )}
-</article>
+          <p className="section-label">Kanttekening</p>
+          <p>{replaceRoleText(advice.caution)}</p>
+        </article>
 
-<article className="panel action-panel">
-  <button type="button" className="ghost-button" onClick={handleReset}>
-    Nieuwe invoer starten
-  </button>
-  <button type="button" className="primary-button" onClick={handleExport}>
-    Exporteer werkhypothese
-  </button>
-</article>
+        <article className="panel action-panel">
+          <button type="button" className="ghost-button" onClick={handleReset}>
+            Nieuwe invoer starten
+          </button>
+          <button type="button" className="primary-button" onClick={handlePrintReport}>
+            Print / PDF
+          </button>
+        </article>
       </div>
     );
   }
 
   function renderCurrentStep() {
+    if (currentStepConfig.key === 'intro') return renderIntroStep();
     if (currentStepConfig.key === 'student') return renderStudentStep();
     if (currentStepConfig.key === 'tests') return renderTestsStep();
     if (currentStepConfig.key === 'context') return renderContextStep();
-    if (currentStepConfig.key === 'observations') {
-      return renderObservationStep(currentObservationItem);
-    }
+    if (currentStepConfig.key === 'observations') return renderObservationStep();
     if (currentStepConfig.key === 'review') return renderReviewStep();
     if (currentStepConfig.key === 'results') return renderResultsStep();
     return null;
@@ -1240,23 +1321,16 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
         <div className="container hero-layout single-hero">
           <div className="hero-main">
             <p className="eyebrow">Webtool profiel en onderwijsbehoefte</p>
-            <h1>HB Profiel & Onderwijsbehoefte</h1>
+            <h1>HB Profiel &amp; Onderwijsbehoefte</h1>
             <p className="intro">
-              Deze tool ondersteunt leerkrachten stap voor stap bij het vormen van een
-              werkhypothese over profiel, overlap, prestatiebeeld en passende
-              onderwijsbehoeften.
+              Deze tool ondersteunt leerkrachten stap voor stap bij het vormen van een werkhypothese over profiel, overlap, prestatiebeeld en passende onderwijsbehoeften.
             </p>
             <div className="meta-pills">
-              <span className="pill">
-                {answeredObservationCount} observaties ingevuld
-              </span>
-              <span className="pill">
-                Stap {currentStep + 1} van {steps.length}
-              </span>
-              {isObservationPhase && (
-                <span className="pill">
-                  Vraag {currentObservationIndex + 1} van {observationItems.length}
-                </span>
+              <span className="pill">{answeredObservationCount} observaties ingevuld</span>
+              {currentStepConfig.key === 'observations' ? (
+                <span className="pill">Vraag {currentObservationIndex + 1} van {observationItems.length}</span>
+              ) : (
+                <span className="pill">Stap {currentStep + 1} van {steps.length}</span>
               )}
             </div>
           </div>
@@ -1269,7 +1343,6 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
             {steps.map((step, index) => {
               const isActive = index === currentStep;
               const isDone = index < currentStep;
-
               return (
                 <div
                   key={step.key}
@@ -1301,16 +1374,13 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
               </button>
 
               <div className="wizard-status">
-                {currentStepConfig.key !== 'review' &&
-                  currentStepConfig.key !== 'results' && (
-                    <span className="helper-text">
-                      {canGoNext
-                        ? currentStepConfig.key === 'observations'
-                          ? 'Je kunt doorgaan naar de volgende vraag.'
-                          : 'Je kunt doorgaan naar de volgende stap.'
-                        : 'Vul eerst de benodigde informatie in om verder te gaan.'}
-                    </span>
-                  )}
+                {currentStepConfig.key !== 'review' && currentStepConfig.key !== 'results' && (
+                  <span className="helper-text">
+                    {canGoNext
+                      ? 'Je kunt doorgaan naar de volgende stap.'
+                      : 'Vul eerst de benodigde informatie in om verder te gaan.'}
+                  </span>
+                )}
               </div>
 
               <button
@@ -1319,12 +1389,11 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
                 onClick={handleNext}
                 disabled={!canGoNext}
               >
-                {currentStepConfig.key === 'observations'
-                  ? currentObservationIndex === observationItems.length - 1
+                {currentStep === reviewStepIndex
+                  ? 'Toon uitkomst'
+                  : currentStepConfig.key === 'observations' &&
+                    currentObservationIndex === observationItems.length - 1
                     ? 'Naar controle'
-                    : 'Volgende vraag'
-                  : currentStep === reviewStepIndex
-                    ? 'Toon uitkomst'
                     : 'Volgende'}
               </button>
             </article>
@@ -1333,21 +1402,14 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
       </main>
 
       {isProfileModalOpen && bestProfile && (
-        <div
-          className="modal-backdrop"
-          onClick={() => setIsProfileModalOpen(false)}
-        >
-          <div
-            className="modal-card"
-            onClick={(event) => event.stopPropagation()}
-          >
+        <div className="modal-backdrop" onClick={() => setIsProfileModalOpen(false)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
             <div className="panel-head">
               <div>
                 <p className="section-label">Profieluitleg</p>
                 <h2>{formatProfileHeading(bestProfile)}</h2>
                 <p className="helper-text">
-                  Dit profiel helpt bij het begrijpen van het zichtbare functioneren
-                  in school. Het is geen diagnose.
+                  Dit profiel helpt bij het begrijpen van het zichtbare functioneren in school. Het is geen diagnose.
                 </p>
               </div>
               <button
@@ -1383,9 +1445,7 @@ if (lastTrackedSignatureRef.current === trackingSignature) return;
               <div className="modal-section">
                 <strong>Contextnoot</strong>
                 <p>
-                  Dossierinformatie, thuissituatie, toetsgegevens en verschillen
-                  tussen settings kunnen dit profielbeeld versterken of nuanceren,
-                  maar tellen niet mee in de ruwe profielscore.
+                  Thuissituatie, toetsgegevens en verschillen tussen settings kunnen het profielbeeld versterken of nuanceren, maar tellen niet mee in de ruwe profielscore.
                 </p>
               </div>
             </div>
