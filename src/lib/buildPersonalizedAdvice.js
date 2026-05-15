@@ -86,7 +86,12 @@ const PROFILE_ANCHOR_BOOSTS = {
 
 const AREA_BOOSTS = {
   underachievement: ['Leerkracht', 'Leeromgeving', 'Leerstof en opdrachten'],
-  twiceExceptional: ['Instructie', 'Leerstof en opdrachten', 'Leeractiviteiten', 'Feedback'],
+  twiceExceptional: [
+    'Instructie',
+    'Leerstof en opdrachten',
+    'Leeractiviteiten',
+    'Feedback'
+  ],
   socialVisibility: ['Leeromgeving', 'Feedback', 'Groepsgenoten'],
   selfDirection: ['Leerstof en opdrachten', 'Leeractiviteiten', 'Leerkracht']
 };
@@ -99,13 +104,6 @@ const CONTEXT_SIGNAL_AREA_WEIGHTS = {
   'ctx-peer-match-helps': {
     Groepsgenoten: 1
   }
-};
-
-const CONTEXT_SIGNAL_REASON_TEXT = {
-  'ctx-small-group-stronger':
-    'De leerling laat in een kleinere of veiligere setting meer zien.',
-  'ctx-peer-match-helps':
-    'De leerling functioneert sterker bij cognitief of inhoudelijk passende peers.'
 };
 
 function unique(items) {
@@ -196,26 +194,12 @@ function getForcedContextAreas(signal, topProfileId, overlapProfileId) {
   return primaryArea ? [primaryArea] : [];
 }
 
-function findRelevantContextSignalForArea(contextSignals, area) {
-  const matchingSignals = contextSignals.filter((signal) =>
-    Object.prototype.hasOwnProperty.call(
-      CONTEXT_SIGNAL_AREA_WEIGHTS[signal.id] || {},
-      area
-    )
-  );
-
-  if (matchingSignals.length === 0) return null;
-
-  return matchingSignals.sort((left, right) => {
-    const leftWeight = (CONTEXT_SIGNAL_AREA_WEIGHTS[left.id] || {})[area] || 0;
-    const rightWeight = (CONTEXT_SIGNAL_AREA_WEIGHTS[right.id] || {})[area] || 0;
-
-    if (rightWeight !== leftWeight) return rightWeight - leftWeight;
-    return right.strength - left.strength;
-  })[0];
-}
-
-function buildPrioritizedAreaNames(areaScores, activeContextSignals, topProfileId, overlapProfileId) {
+function buildPrioritizedAreaNames(
+  areaScores,
+  activeContextSignals,
+  topProfileId,
+  overlapProfileId
+) {
   const sortedAreas = Object.entries(areaScores)
     .filter(([area]) => area !== 'Thuissituatie / ouders')
     .sort((left, right) => right[1] - left[1])
@@ -328,8 +312,6 @@ function buildGenericNoSignalAdvice() {
           'Er is nog geen specifieke profielrichting zichtbaar. Het helpt om te observeren wat er gebeurt wanneer de leerling compactere, betekenisvollere of uitdagendere taken krijgt.',
         advice:
           'Bied tijdelijk een kleine, duidelijk afgebakende verrijkings- of verdiepingsopdracht aan en kijk of betrokkenheid, initiatief of kwaliteit van denken dan verandert.',
-        reason:
-          'Zonder positieve profielsignalen zegt vooral de reactie op aangepast aanbod iets over verdere duiding.',
         sharedByOverlap: false,
         sources: []
       },
@@ -339,8 +321,6 @@ function buildGenericNoSignalAdvice() {
           'Er is behoefte aan zicht op hoe de leerling functioneert bij verschillende vormen van werken, zoals zelfstandig, in klein verband of mondeling.',
         advice:
           'Vergelijk doelgericht meerdere situaties: klassikaal, individueel, mondeling, schriftelijk en bij open of gesloten opdrachten.',
-        reason:
-          'Verschillen tussen situaties kunnen later richting geven aan profielduiding en onderwijsafstemming.',
         sharedByOverlap: false,
         sources: []
       },
@@ -350,8 +330,6 @@ function buildGenericNoSignalAdvice() {
           'Er is behoefte aan observaties in een omgeving waarin uitdaging en sociale veiligheid allebei aanwezig zijn.',
         advice:
           'Let erop of de leerling in een kleinere, veiligere of inhoudelijk passender setting ander gedrag laat zien dan in de hele groep.',
-        reason:
-          'Contextverschillen kunnen verklaren waarom profielsignalen in de gewone klassensituatie nog weinig zichtbaar zijn.',
         sharedByOverlap: false,
         sources: []
       },
@@ -360,9 +338,7 @@ function buildGenericNoSignalAdvice() {
         need:
           'Er is behoefte aan gezamenlijke duiding van de observaties, zodat niet te snel een profiel wordt verondersteld of uitgesloten.',
         advice:
-          'Bespreek de huidige observaties met collega of intern begeleider en spreek af welke aanvullende observaties of kleine interventies eerst worden uitgeprobeerd.',
-        reason:
-          'Een nulsituatie vraagt niet om forceren, maar om gerichte vervolgstappen.',
+          'Bespreek de huidige observaties met collega of intern begeleider / kwaliteitscoördinator en spreek af welke aanvullende observaties of kleine interventies eerst worden uitgeprobeerd.',
         sharedByOverlap: false,
         sources: []
       }
@@ -375,7 +351,7 @@ function buildGenericNoSignalAdvice() {
     followUpSteps: [
       'Observeer opnieuw tijdens betekenisvolle of uitdagendere taken.',
       'Vergelijk het functioneren van de leerling in verschillende settings en werkvormen.',
-      'Bespreek de observaties met collega of intern begeleider en bepaal welke aanvullende observaties nodig zijn.'
+      'Bespreek de observaties met collega of intern begeleider / kwaliteitscoördinator en bepaal welke aanvullende observaties nodig zijn.'
     ],
     caution:
       'Deze uitkomst is een werkhypothese op basis van schoolse observaties. De tool geeft hier bewust geen geforceerd profiel wanneer duidelijke profielsignalen ontbreken.',
@@ -433,7 +409,9 @@ export default function buildPersonalizedAdvice({
   const overlapDifference = profileBase.topScore - profileBase.secondScore;
   const overlapIsTight = overlapProfile && overlapDifference <= 1;
   const overlapIsRelevant = overlapProfile && overlapDifference <= 3;
-  const hasOverlapProfile = Boolean(overlapProfile && profileBase.directionKey === 'overlap');
+  const hasOverlapProfile = Boolean(
+    overlapProfile && profileBase.directionKey === 'overlap'
+  );
   const useLimitedType5Overlap = Boolean(hasOverlapProfile && topProfile.id === 'type5');
   const useCombinedAdvice = Boolean(hasOverlapProfile && !useLimitedType5Overlap);
   const type5AccentAreas = useLimitedType5Overlap
@@ -462,7 +440,9 @@ export default function buildPersonalizedAdvice({
 
   if (
     interpretation.discrepancySignals.some((signal) =>
-      signal.toLowerCase().includes('sterke kanten en bekende ondersteuningsinformatie')
+      signal
+        .toLowerCase()
+        .includes('sterke kanten en bekende ondersteuningsinformatie')
     )
   ) {
     boostAreas(areaScores, AREA_BOOSTS.twiceExceptional, 4);
@@ -504,48 +484,10 @@ export default function buildPersonalizedAdvice({
     const overlapNeed = overlapNeedMap[area];
     const hasType5Accent = Boolean(
       useLimitedType5Overlap &&
-      overlapProfile &&
-      overlapNeed &&
-      type5AccentAreas.includes(area)
+        overlapProfile &&
+        overlapNeed &&
+        type5AccentAreas.includes(area)
     );
-    const reasonParts = [
-      useCombinedAdvice && overlapProfile
-        ? `Gebaseerd op de gecombineerde werkhypothese van ${normalizeText(
-            topProfile.shortTitle
-          ).toLowerCase()} en ${normalizeText(
-            overlapProfile.shortTitle
-          ).toLowerCase()}.`
-        : `Sluit aan bij ${normalizeText(topProfile.shortTitle).toLowerCase()}.`
-    ];
-
-    const relevantContextSignal = findRelevantContextSignalForArea(
-      activeContextSignals,
-      area
-    );
-
-    if (relevantContextSignal) {
-      reasonParts.push(
-        CONTEXT_SIGNAL_REASON_TEXT[relevantContextSignal.id] ||
-          normalizeText(relevantContextSignal.prompt)
-      );
-    }
-
-    if (
-      contextInput.knownSupportInfoPresence === 'yes' &&
-      (topProfile.id === 'type5' || overlapProfile?.id === 'type5')
-    ) {
-      reasonParts.push(
-        'Bekende dossierinformatie vraagt om een combinatie van uitdaging en passende ondersteuning.'
-      );
-    }
-
-    if (useLimitedType5Overlap && hasType5Accent && overlapProfile) {
-      reasonParts.push(
-        `De overlap met ${normalizeText(
-          overlapProfile.shortTitle
-        ).toLowerCase()} geeft op dit behoeftegebied aanvullende richting.`
-      );
-    }
 
     const primarySources = splitSources(primaryNeed?.sources || '');
     const overlapSources = splitSources(overlapNeed?.sources || '');
@@ -580,7 +522,6 @@ export default function buildPersonalizedAdvice({
                 overlapProfile.shortTitle
               )
             : primaryNeed?.advice || '',
-      reason: reasonParts.join(' '),
       sharedByOverlap: Boolean(
         (useCombinedAdvice && overlapNeed) || hasType5Accent
       ),
@@ -621,7 +562,7 @@ export default function buildPersonalizedAdvice({
   const followUpSteps = [];
 
   followUpSteps.push(
-    'Bespreek de werkhypothese met collega’s of intern begeleider en vertaal deze naar een korte gezamenlijke aanpak.'
+    'Bespreek de werkhypothese met collega’s of intern begeleider / kwaliteitscoördinator en vertaal deze naar een korte gezamenlijke aanpak.'
   );
 
   if (useCombinedAdvice && overlapProfile) {
@@ -649,7 +590,7 @@ export default function buildPersonalizedAdvice({
       'Werk aan bredere beeldvorming: onderzoek in samenhang hoe sterke cognitieve kanten, uitvoeringsproblemen, bestaande ondersteuningsinformatie en schoolprestaties over tijd zich tot elkaar verhouden.'
     );
     followUpSteps.push(
-      'Betrek ouders, intern begeleider en waar nodig aanvullende specialistische expertise; deze werkhypothese vervangt geen nadere beeldvorming.'
+      'Betrek ouders, intern begeleider / kwaliteitscoördinator en waar nodig aanvullende specialistische expertise; deze werkhypothese vervangt geen nadere beeldvorming.'
     );
   }
 
@@ -673,9 +614,9 @@ export default function buildPersonalizedAdvice({
     homeAttention =
       'De thuissituatie contrasteert met het schoolbeeld. Dat verschil verdient expliciete aandacht in de interpretatie en vervolgstappen.';
   } else if (homeInput.pattern === 'confirm') {
-  homeAttention =
-    'Het thuissignaal bevestigt het schoolbeeld grotendeels. Dat maakt de huidige werkhypothese consistenter, maar niet definitief.';
-}
+    homeAttention =
+      'Het thuissignaal bevestigt het schoolbeeld grotendeels. Dat maakt de huidige werkhypothese consistenter, maar niet definitief.';
+  }
 
   const resultHeading =
     profileBase.directionKey === 'overlap' && overlapProfile
