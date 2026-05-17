@@ -14,6 +14,10 @@ import {
   createSessionId,
   saveTrackingRecord
 } from './lib/tracking.js';
+import {
+  downloadPdfReport,
+  downloadWordReport
+} from './lib/exportReport.js';
 
 const PROFILE_CARD_SUMMARIES = [
   {
@@ -103,26 +107,6 @@ const TEST_FIELD_LABELS = {
   spelling: 'Spelling'
 };
 
-const TEST_EXPORT_LABELS = Object.fromEntries(
-  TEST_OPTIONS.map((option) => [option.value, option.label])
-);
-
-const ZOOV_EXPORT_LABELS = Object.fromEntries(
-  ZOOV_OPTIONS.map((option) => [option.value, option.label])
-);
-
-const HOME_PATTERN_LABELS = {
-  unknown: 'Niet ingevuld',
-  confirm: 'Thuissituatie lijkt het schoolbeeld grotendeels te bevestigen',
-  contrast: 'Thuissituatie contrasteert met het schoolbeeld'
-};
-
-const KNOWN_SUPPORT_INFO_LABELS = {
-  unknown: 'Niet ingevuld',
-  yes: 'Ja, er is bekende relevante ondersteuningsinformatie',
-  no: 'Nee, er is geen bekende relevante ondersteuningsinformatie'
-};
-
 const STUDENT_INITIAL = {
   name: '',
   group: '',
@@ -173,16 +157,12 @@ function formatProfileHeading(profile) {
   return `${toDisplay(profile.shortTitle)} - ${toDisplay(profile.title)}`;
 }
 
-function formatStrength(strength) {
-  if (strength === 3) return 'duidelijk zichtbaar';
-  if (strength === 2) return 'regelmatig zichtbaar';
-  if (strength === 1) return 'soms zichtbaar';
-  return 'niet waargenomen';
-}
-
 function replaceRoleText(text) {
   if (!text) return text;
-  return text.replace(/intern begeleider/gi, 'intern begeleider / kwaliteitscoördinator');
+  return text.replace(
+    /intern begeleider/gi,
+    'intern begeleider / kwaliteitscoördinator'
+  );
 }
 
 function getCategoryLabel(category) {
@@ -201,218 +181,6 @@ function getCategoryHelpText(category) {
   return 'Contextsignaal = extra duiding, maar telt niet mee in de ruwe profielscore.';
 }
 
-function buildPrintReportHtml({
-  student,
-  zoovSignal,
-  contextInput,
-  homeInput,
-  testScores,
-  interpretation,
-  advice,
-  bestProfile,
-  overlapProfile
-}) {
-  const printableAdvice = advice.prioritizedNeeds || [];
-  const printableFollowUp = (advice.followUpSteps || []).map(replaceRoleText);
-  const printableHomeAttention = replaceRoleText(advice.homeAttention || '');
-  const printableCaution = replaceRoleText(advice.caution || '');
-
-  const testRows = Object.entries(testScores)
-    .map(
-      ([key, value]) => `
-        <tr>
-          <td>${TEST_FIELD_LABELS[key]}</td>
-          <td>${TEST_EXPORT_LABELS[value] || value}</td>
-        </tr>
-      `
-    )
-    .join('');
-
-  const discrepancyHtml = interpretation.discrepancySignals.length
-    ? interpretation.discrepancySignals
-        .map((signal) => `<li>${toDisplay(signal)}</li>`)
-        .join('')
-    : '<li>Er zijn op basis van de huidige invoer nog geen expliciete discrepantiesignalen zichtbaar.</li>';
-
-  const adviceHtml = printableAdvice
-    .map(
-      (item) => `
-        <div class="print-card">
-          <div class="print-area-row">
-            <strong>${item.area}</strong>
-            ${item.sharedByOverlap ? '<span class="print-tag">Extra relevant bij overlap</span>' : ''}
-          </div>
-          <p><strong>Onderwijsbehoefte:</strong> ${replaceRoleText(item.need)}</p>
-          <p><strong>Advies:</strong> ${replaceRoleText(item.advice)}</p>
-        </div>
-      `
-    )
-    .join('');
-
-  const overlapHtml = overlapProfile
-    ? `
-      <div class="print-block compact-note">
-        <strong>Profieloverlap</strong>
-        <p>
-          Profieloverlap is mogelijk. Profielen zijn geen vaste labels, maar interpretatiekaders.
-          Deze uitkomst ondersteunt de interpretatie en het handelen in de schoolcontext.
-        </p>
-      </div>
-    `
-    : '';
-
-  return `
-    <html>
-      <head>
-        <title>Werkhypothese profiel en onderwijsbehoefte</title>
-        <style>
-          * { box-sizing: border-box; }
-          body {
-            font-family: Inter, Arial, sans-serif;
-            color: #1f2937;
-            margin: 28px;
-            line-height: 1.45;
-            font-size: 14px;
-            background: #ffffff;
-          }
-          h1, h2, h3, p { margin: 0; }
-          h1 { font-size: 24px; margin-bottom: 6px; }
-          h2 { font-size: 18px; margin-bottom: 10px; }
-          .subtle { color: #4b5563; }
-          .section { margin-top: 22px; }
-          .print-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-          }
-          .print-block, .print-card {
-            border: 1px solid #dbe3ec;
-            border-radius: 12px;
-            padding: 14px;
-            margin-top: 10px;
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-          .compact-note { background: #f8fafc; }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-          }
-          td {
-            border-bottom: 1px solid #e5e7eb;
-            padding: 8px 0;
-            vertical-align: top;
-          }
-          ul { margin: 8px 0 0 18px; padding: 0; }
-          li { margin-bottom: 6px; }
-          .print-tag {
-            display: inline-block;
-            border: 1px solid #dbe3ec;
-            border-radius: 999px;
-            padding: 4px 8px;
-            font-size: 12px;
-            color: #355f86;
-            background: #eef4fa;
-          }
-          .print-area-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            align-items: flex-start;
-            margin-bottom: 8px;
-          }
-          .print-card p + p { margin-top: 8px; }
-        </style>
-      </head>
-      <body>
-        <h1>Werkhypothese profiel en onderwijsbehoefte</h1>
-        <p class="subtle">Print- en pdf-weergave voor bespreking met collega’s, ouders of andere betrokkenen.</p>
-
-        <div class="section print-grid">
-          <div class="print-block">
-            <h2>Leerlinggegevens</h2>
-            <p><strong>Naam:</strong> ${student.name || '-'}</p>
-            <p><strong>Groep:</strong> ${student.group || '-'}</p>
-            <p><strong>Ingevuld door:</strong> ${student.observer || '-'}</p>
-            <p><strong>Datum:</strong> ${student.date || '-'}</p>
-          </div>
-          <div class="print-block">
-            <h2>Aanleiding</h2>
-            <p><strong>ZOOV+:</strong> ${ZOOV_EXPORT_LABELS[zoovSignal.status] || zoovSignal.status}</p>
-            <p><strong>Notitie:</strong> ${zoovSignal.note || '-'}</p>
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="print-block">
-            <h2>Profielduiding</h2>
-            <p><strong>Best passend profiel:</strong> ${bestProfile ? formatProfileHeading(bestProfile) : 'Geen duidelijke profielrichting zichtbaar'}</p>
-            ${overlapProfile ? `<p><strong>Overlap:</strong> ${formatProfileHeading(overlapProfile)}</p>` : ''}
-            <p style="margin-top:10px;"><strong>Werkhypothese:</strong> ${replaceRoleText(advice.workHypothesis)}</p>
-            <p style="margin-top:8px;">${replaceRoleText(advice.shortInterpretation)}</p>
-          </div>
-          ${overlapHtml}
-        </div>
-
-        <div class="section print-grid">
-          <div class="print-block">
-            <h2>Toetsgegevens</h2>
-            <table>${testRows}</table>
-          </div>
-          <div class="print-block">
-            <h2>Context</h2>
-            <p><strong>Bekende ondersteuningsinformatie:</strong> ${KNOWN_SUPPORT_INFO_LABELS[contextInput.knownSupportInfoPresence] || contextInput.knownSupportInfoPresence}</p>
-            <p><strong>Dossiernotitie:</strong> ${contextInput.knownSupportInfoNote || '-'}</p>
-            <p><strong>Thuissituatie:</strong> ${HOME_PATTERN_LABELS[homeInput.pattern] || homeInput.pattern}</p>
-          </div>
-        </div>
-
-        <div class="section print-block">
-          <h2>Prestatiebeeld en discrepanties</h2>
-          <p>${toDisplay(interpretation.performanceSummary)}</p>
-          <p style="margin-top:10px;" class="subtle">
-            Verschillen tussen observaties en toetsgegevens kunnen wijzen op onderpresteren, wisselend functioneren of maskering. Deze duiding is ondersteunend en niet-diagnostisch.
-          </p>
-          <ul>${discrepancyHtml}</ul>
-        </div>
-
-        <div class="section">
-          <h2>Onderwijsbehoeften en adviezen</h2>
-          ${adviceHtml}
-        </div>
-
-        <div class="section print-block">
-          <h2>Vervolg</h2>
-          <ul>
-            ${printableFollowUp.map((step) => `<li>${step}</li>`).join('')}
-            ${printableHomeAttention ? `<li>Thuissituatie als aandachtspunt: ${printableHomeAttention}</li>` : ''}
-          </ul>
-        </div>
-
-        <div class="section print-block compact-note">
-          <h2>Kanttekening</h2>
-          <p>${printableCaution}</p>
-          <p style="margin-top:8px;">Dit is geen diagnose.</p>
-        </div>
-      </body>
-    </html>
-  `;
-}
-
-function openPrintWindow(html) {
-  const printWindow = window.open('', '_blank', 'width=1000,height=1200');
-  if (!printWindow) return;
-
-  printWindow.document.open();
-  printWindow.document.write(html);
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.onload = () => {
-    printWindow.print();
-  };
-}
-
 function App() {
   const profilesById = useMemo(buildProfilesById, []);
   const sessionId = useMemo(() => createSessionId(), []);
@@ -426,6 +194,7 @@ function App() {
   const [observationAnswers, setObservationAnswers] = useState(EMPTY_OBSERVATIONS);
   const [notes, setNotes] = useState(NOTES_INITIAL);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [currentObservationIndex, setCurrentObservationIndex] = useState(0);
   const [isChecklistConfirmed, setIsChecklistConfirmed] = useState(false);
@@ -497,6 +266,7 @@ function App() {
   const bestProfile = profileBase.topProfileId
     ? profilesById[profileBase.topProfileId]
     : null;
+
   const overlapProfile = profileBase.overlapProfileId
     ? profilesById[profileBase.overlapProfileId]
     : null;
@@ -645,6 +415,7 @@ function App() {
     setObservationAnswers(EMPTY_OBSERVATIONS);
     setNotes(NOTES_INITIAL);
     setIsProfileModalOpen(false);
+    setIsExportModalOpen(false);
     setCurrentStep(0);
     setCurrentObservationIndex(0);
     setIsChecklistConfirmed(false);
@@ -652,20 +423,26 @@ function App() {
     lastTrackedSignatureRef.current = null;
   };
 
-  const handlePrintReport = () => {
-    openPrintWindow(
-      buildPrintReportHtml({
-        student,
-        zoovSignal,
-        contextInput,
-        homeInput,
-        testScores,
-        interpretation,
-        advice,
-        bestProfile,
-        overlapProfile
-      })
-    );
+  const buildExportInput = () => ({
+    student,
+    zoovSignal,
+    contextInput,
+    homeInput,
+    testScores,
+    interpretation,
+    advice,
+    bestProfile,
+    overlapProfile
+  });
+
+  const handleExportPdf = () => {
+    downloadPdfReport(buildExportInput());
+    setIsExportModalOpen(false);
+  };
+
+  const handleExportWord = () => {
+    downloadWordReport(buildExportInput());
+    setIsExportModalOpen(false);
   };
 
   function isStepComplete(step) {
@@ -726,19 +503,28 @@ function App() {
         <div className="intro-points">
           <div className="secondary-card compact-card">
             <strong>Doel van de tool</strong>
-            <p>Deze tool helpt leerkrachten om signalen van leerlingen te duiden en te vertalen naar passende onderwijsbehoeften.</p>
+            <p>
+              Deze tool helpt leerkrachten om signalen van leerlingen te duiden en te vertalen
+              naar passende onderwijsbehoeften.
+            </p>
           </div>
           <div className="secondary-card compact-card">
             <strong>Ondersteunend en niet-diagnostisch</strong>
-            <p>De tool ondersteunt de duiding van observeerbaar functioneren en stelt geen diagnose.</p>
+            <p>
+              De tool ondersteunt de duiding van observeerbaar functioneren en stelt geen diagnose.
+            </p>
           </div>
           <div className="secondary-card compact-card">
             <strong>Profielen als interpretatiekader</strong>
-            <p>De profielen van Betts &amp; Neihart zijn richtinggevend en helpen om zichtbaar gedrag te begrijpen.</p>
+            <p>
+              De profielen van Betts &amp; Neihart zijn richtinggevend en helpen om zichtbaar gedrag te begrijpen.
+            </p>
           </div>
           <div className="secondary-card compact-card">
             <strong>Overlap is mogelijk</strong>
-            <p>Meerdere profielen kunnen tegelijk zichtbaar zijn. Dat komt in de praktijk regelmatig voor.</p>
+            <p>
+              Meerdere profielen kunnen tegelijk zichtbaar zijn. Dat komt in de praktijk regelmatig voor.
+            </p>
           </div>
         </div>
 
@@ -1164,8 +950,12 @@ function App() {
           <button type="button" className="ghost-button" onClick={handleReset}>
             Nieuwe invoer starten
           </button>
-          <button type="button" className="primary-button" onClick={handlePrintReport}>
-            Print / PDF
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => setIsExportModalOpen(true)}
+          >
+            Exporteren
           </button>
         </article>
       </div>
@@ -1332,6 +1122,53 @@ function App() {
                   Thuissituatie, toetsgegevens en verschillen tussen settings kunnen het profielbeeld versterken of nuanceren, maar tellen niet mee in de ruwe profielscore.
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isExportModalOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setIsExportModalOpen(false)}
+        >
+          <div
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="panel-head">
+              <div>
+                <p className="section-label">Exporteren</p>
+                <h2>Kies een bestandsformaat</h2>
+                <p className="helper-text">
+                  Exporteer de rapportage direct als PDF of Word-document.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => setIsExportModalOpen(false)}
+              >
+                Sluiten
+              </button>
+            </div>
+
+            <div className="field-grid two-columns">
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleExportPdf}
+              >
+                Exporteer als PDF
+              </button>
+
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={handleExportWord}
+              >
+                Exporteer als Word
+              </button>
             </div>
           </div>
         </div>
