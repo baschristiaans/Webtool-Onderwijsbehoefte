@@ -1000,34 +1000,7 @@ function App() {
 
       <main className="container app-layout">
         <section className="input-column">
-          {currentStepConfig.key !== 'intro' && (
-            <div className="progress-strip">
-              {steps
-                .filter((step) => step.key !== 'intro')
-                .map((step, index) => {
-                  const visibleStepNumber = index + 1;
-                  const currentVisibleStep = currentStep;
-                  const isActive = visibleStepNumber === currentVisibleStep;
-                  const isDone = visibleStepNumber < currentVisibleStep;
-
-                  return (
-                    <div
-                      key={step.key}
-                      className={`progress-step ${isActive ? 'is-active' : ''} ${
-                        isDone ? 'is-done' : ''
-                      }`}
-                    >
-                      <span>{visibleStepNumber}</span>
-                      <div>
-                        <strong>{step.shortTitle}</strong>
-                        <small>{step.title}</small>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-
+          
           {renderCurrentStep()}
 
           {currentStep < resultStepIndex && (
