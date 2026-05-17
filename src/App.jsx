@@ -985,9 +985,6 @@ function App() {
             </p>
             <div className="meta-pills">
               <span className="pill">{answeredObservationCount} observaties ingevuld</span>
-              {currentStepConfig.key !== 'intro' && !isObservationPhase && (
-                <span className="pill">Stap {currentStep} van {steps.length - 1}</span>
-              )}
               {isObservationPhase && (
                 <span className="pill">
                   Vraag {currentObservationIndex + 1} van {observationItems.length}
