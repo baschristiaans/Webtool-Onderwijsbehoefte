@@ -22,33 +22,45 @@ import {
 const PROFILE_CARD_SUMMARIES = [
   {
     id: 'type1',
-    title: 'Type 1 – aangepast succesvol',
-    summary: 'presteert goed maar vermijdt risico’s'
+    typeLabel: 'Type 1',
+    title: 'Aangepast succesvol',
+    summary: 'presteert goed maar vermijdt risico’s',
+    accentClass: 'profile-accent-type1'
   },
   {
     id: 'type2',
-    title: 'Type 2 – uitdagend creatief',
-    summary: 'creatief, kritisch en uitdagend gedrag'
+    typeLabel: 'Type 2',
+    title: 'Uitdagend creatief',
+    summary: 'creatief, kritisch en uitdagend gedrag',
+    accentClass: 'profile-accent-type2'
   },
   {
     id: 'type3',
-    title: 'Type 3 – onderduikend',
-    summary: 'past zich aan om niet op te vallen'
+    typeLabel: 'Type 3',
+    title: 'Onderduikend',
+    summary: 'past zich aan om niet op te vallen',
+    accentClass: 'profile-accent-type3'
   },
   {
     id: 'type4',
-    title: 'Type 4 – risicoleerling',
-    summary: 'sterke onderprestatie en schoolvervreemding'
+    typeLabel: 'Type 4',
+    title: 'Risicoleerling',
+    summary: 'sterke onderprestatie en schoolvervreemding',
+    accentClass: 'profile-accent-type4'
   },
   {
     id: 'type5',
-    title: 'Type 5 – dubbel bijzonder',
-    summary: 'combinatie van begaafdheid en andere ondersteuningsbehoeften'
+    typeLabel: 'Type 5',
+    title: 'Dubbel bijzonder',
+    summary: 'combinatie van begaafdheid en andere ondersteuningsbehoeften',
+    accentClass: 'profile-accent-type5'
   },
   {
     id: 'type6',
-    title: 'Type 6 – zelfsturend autonoom',
-    summary: 'zelfstandig, doelgericht en intrinsiek gemotiveerd'
+    typeLabel: 'Type 6',
+    title: 'Zelfsturend autonoom',
+    summary: 'zelfstandig, doelgericht en intrinsiek gemotiveerd',
+    accentClass: 'profile-accent-type6'
   }
 ];
 
@@ -529,13 +541,19 @@ function App() {
         </div>
 
         <div className="profile-card-grid">
-          {PROFILE_CARD_SUMMARIES.map((profile) => (
-            <article className="profile-card" key={profile.id}>
-              <strong>{profile.title}</strong>
-              <p>{profile.summary}</p>
-            </article>
-          ))}
-        </div>
+  {PROFILE_CARD_SUMMARIES.map((profile) => (
+    <article
+      className={`profile-card profile-card-enhanced ${profile.accentClass}`}
+      key={profile.id}
+    >
+      <div className="profile-card-top">
+        <span className="profile-type-badge">{profile.typeLabel}</span>
+      </div>
+      <h3 className="profile-card-title">{profile.title}</h3>
+      <p className="profile-card-summary">{profile.summary}</p>
+    </article>
+  ))}
+</div>
       </article>
     );
   }

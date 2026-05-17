@@ -550,3 +550,111 @@ p {
     padding: 18px;
   }
 }
+.profile-card.profile-card-enhanced {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 18px 16px;
+  border-radius: 16px;
+  border: 1px solid #dbe3ec;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbfd 100%);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.profile-card.profile-card-enhanced:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+}
+
+.profile-card.profile-card-enhanced::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  border-radius: 16px 0 0 16px;
+  background: #9fb3c8;
+}
+
+.profile-card-top {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.profile-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid #d7e2ee;
+  background: #eef4fa;
+  color: #355f86;
+}
+
+.profile-card-title {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #111827;
+}
+
+.profile-card-summary {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+.profile-accent-type1::before {
+  background: #5b8bd9;
+}
+.profile-accent-type2::before {
+  background: #d97706;
+}
+.profile-accent-type3::before {
+  background: #8b5cf6;
+}
+.profile-accent-type4::before {
+  background: #dc2626;
+}
+.profile-accent-type5::before {
+  background: #0f766e;
+}
+.profile-accent-type6::before {
+  background: #2563eb;
+}
+
+.profile-accent-type1 .profile-type-badge {
+  background: #eef4ff;
+  border-color: #d8e4fb;
+  color: #345f9b;
+}
+.profile-accent-type2 .profile-type-badge {
+  background: #fff5e8;
+  border-color: #f6dfbf;
+  color: #9a5b13;
+}
+.profile-accent-type3 .profile-type-badge {
+  background: #f4efff;
+  border-color: #e4d8fb;
+  color: #6f49b6;
+}
+.profile-accent-type4 .profile-type-badge {
+  background: #fff0f0;
+  border-color: #f6d2d2;
+  color: #b42323;
+}
+.profile-accent-type5 .profile-type-badge {
+  background: #ecfbf8;
+  border-color: #cdeee8;
+  color: #0f766e;
+}
+.profile-accent-type6 .profile-type-badge {
+  background: #eef5ff;
+  border-color: #d8e6fb;
+  color: #2559aa;
+}
