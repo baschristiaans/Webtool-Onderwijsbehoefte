@@ -658,3 +658,17 @@ p {
   border-color: #d8e6fb;
   color: #2559aa;
 }
+.intro-figure-card {
+  background: #ffffff;
+  border: 1px solid #dbe3ec;
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+}
+
+.intro-figure-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+}

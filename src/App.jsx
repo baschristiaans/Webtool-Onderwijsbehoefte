@@ -1,3 +1,4 @@
+import werkwijzeWebtool from './assets/werkwijze-webtool.png';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import profiles from './data/profiles.js';
 import observationItems, {
@@ -539,7 +540,13 @@ function App() {
             </p>
           </div>
         </div>
-
+<div className="intro-figure-card">
+  <img
+    src={werkwijzeWebtool}
+    alt="Werkwijze van de webtool: van signalering naar passend onderwijs"
+    className="intro-figure-image"
+  />
+</div>
         <div className="profile-card-grid">
   {PROFILE_CARD_SUMMARIES.map((profile) => (
     <article
