@@ -106,11 +106,7 @@ function createEvidenceFlags() {
 
 function getPointKey(item) {
   const isShared = item.profileIds.length > 1;
-
-  if (item.category === 'core') {
-    return isShared ? 'coreShared' : 'coreUnique';
-  }
-
+  if (item.category === 'core') return isShared ? 'coreShared' : 'coreUnique';
   return isShared ? 'supportingShared' : 'supportingUnique';
 }
 
@@ -158,42 +154,30 @@ function applyType2AnchorRule(scoresByProfile, observationAnswers) {
 }
 
 function validateProfileEligibility(profileId, evidenceFlags, score) {
-  if (profileId !== 'type5') {
-    return {
-      status: 'regular'
-    };
-  }
+  if (profileId !== 'type5') return { status: 'regular' };
 
   const flags = evidenceFlags.type5;
-
   if (
     flags.hasKnownSupportInfoContext &&
     flags.hasStrengthIndicator &&
     flags.hasExecutionMismatchIndicator &&
     score >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score
   ) {
-    return {
-      status: 'regular'
-    };
+    return { status: 'regular' };
   }
 
-  return {
-    status: 'insufficient'
-  };
+  return { status: 'insufficient' };
 }
 
 function applyEligibilityAdjustments(scoresByProfile, evidenceFlags) {
   const flags = evidenceFlags.type5;
-
   const type5Eligible =
     flags.hasKnownSupportInfoContext &&
     flags.hasStrengthIndicator &&
     flags.hasExecutionMismatchIndicator &&
     scoresByProfile.type5 >= PROFILE_DIRECTION_THRESHOLDS.minimumType5Score;
 
-  if (!type5Eligible) {
-    scoresByProfile.type5 = 0;
-  }
+  if (!type5Eligible) scoresByProfile.type5 = 0;
 }
 
 function buildEvidenceQuality(topProfile, secondProfile) {
@@ -203,18 +187,9 @@ function buildEvidenceQuality(topProfile, secondProfile) {
   const secondScore = secondProfile?.score ?? 0;
   const scoreGap = topProfile.score - secondScore;
 
-  if (topProfile.status.status === 'insufficient') {
-    return 'low';
-  }
-
-  if (topProfile.score >= 8 && scoreGap >= 3 && topEvidenceCount >= 3) {
-    return 'high';
-  }
-
-  if (topProfile.score >= 5 && topEvidenceCount >= 2) {
-    return 'medium';
-  }
-
+  if (topProfile.status.status === 'insufficient') return 'low';
+  if (topProfile.score >= 8 && scoreGap >= 3 && topEvidenceCount >= 3) return 'high';
+  if (topProfile.score >= 5 && topEvidenceCount >= 2) return 'medium';
   return 'low';
 }
 
@@ -226,10 +201,8 @@ function buildStrongestObservations(topProfile, secondProfile, includeOverlap) {
     : [...topProfile.evidence];
 
   const uniqueById = new Map();
-
   sourceItems.forEach((item) => {
     const existing = uniqueById.get(item.id);
-
     if (!existing || item.scoreContribution > existing.scoreContribution) {
       uniqueById.set(item.id, item);
     }
@@ -240,7 +213,6 @@ function buildStrongestObservations(topProfile, secondProfile, includeOverlap) {
       if (right.scoreContribution !== left.scoreContribution) {
         return right.scoreContribution - left.scoreContribution;
       }
-
       return right.strength - left.strength;
     })
     .slice(0, 5);
@@ -248,6 +220,16 @@ function buildStrongestObservations(topProfile, secondProfile, includeOverlap) {
 
 function getMainProfiles(sortedProfiles) {
   return sortedProfiles.filter((item) => item.profileId !== 'type5');
+}
+
+function buildProfileDirectionLabel(directionKey, evidenceQuality, overlapProfile) {
+  if (directionKey === 'no_signal') return 'Nog geen duidelijke profielrichting';
+  if (directionKey === 'overlap' && overlapProfile) {
+    return 'Profieloverlap vraagt om gecombineerde interpretatie';
+  }
+  if (evidenceQuality === 'high') return 'Duidelijke profielrichting';
+  if (evidenceQuality === 'medium') return 'Waarschijnlijke profielrichting';
+  return 'Voorzichtige profielrichting';
 }
 
 export function analyzeProfileBase(observationAnswers, contextInput = {}) {
@@ -281,17 +263,17 @@ export function analyzeProfileBase(observationAnswers, contextInput = {}) {
     }
 
     if (item.id === 'obs-strong-problem-solving') {
-  evidenceFlags.type5.hasStrengthIndicator = true;
-}
+      evidenceFlags.type5.hasStrengthIndicator = true;
+    }
 
-if (
-  item.id === 'obs-unorganized-work' ||
-  item.id === 'obs-not-always-on-task' ||
-  item.id === 'obs-oral-more-than-written' ||
-  item.id === 'obs-work-quality-mismatch'
-) {
-  evidenceFlags.type5.hasExecutionMismatchIndicator = true;
-}
+    if (
+      item.id === 'obs-unorganized-work' ||
+      item.id === 'obs-not-always-on-task' ||
+      item.id === 'obs-oral-more-than-written' ||
+      item.id === 'obs-work-quality-mismatch'
+    ) {
+      evidenceFlags.type5.hasExecutionMismatchIndicator = true;
+    }
 
     const pointKey = getPointKey(item);
     const points = CATEGORY_POINTS[pointKey][answerValue];
@@ -355,13 +337,10 @@ if (
 
   if (type5Eligible) {
     topProfile = type5Profile;
-    overlapProfile =
-      mainTopProfile && mainTopProfile.score > 0 ? mainTopProfile : null;
+    overlapProfile = mainTopProfile && mainTopProfile.score > 0 ? mainTopProfile : null;
     directionKey = overlapProfile ? 'overlap' : 'single';
   } else if (mainTopProfile && mainTopProfile.score > 0) {
-    const overlapDifference =
-      mainTopProfile.score - (mainSecondProfile?.score ?? 0);
-
+    const overlapDifference = mainTopProfile.score - (mainSecondProfile?.score ?? 0);
     const hasMeaningfulOverlap =
       (mainSecondProfile?.score ?? 0) > 0 &&
       overlapDifference <= PROFILE_DIRECTION_THRESHOLDS.overlapDifference;
@@ -398,6 +377,11 @@ if (
     hasNoProfileSignal,
     hasMeaningfulOverlap: Boolean(overlapProfile),
     directionKey,
+    profileDirectionLabel: buildProfileDirectionLabel(
+      directionKey,
+      evidenceQuality,
+      overlapProfile
+    ),
     topProfileId: topProfile ? topProfile.profileId : null,
     overlapProfileId: overlapProfile ? overlapProfile.profileId : null,
     topScore: topProfile ? topProfile.score : 0,
@@ -440,9 +424,9 @@ function summarizeTestLabels(entries) {
 
 export function analyzeRichInterpretation({
   profileBase,
-  contextInput,
-  homeInput,
-  testScores,
+  contextInput = {},
+  homeInput = {},
+  testScores = {},
   notes
 }) {
   const knownTests = buildTestEvidenceEntries(testScores);
@@ -455,9 +439,17 @@ export function analyzeRichInterpretation({
   const maxScore = testValues.length > 0 ? Math.max(...testValues) : null;
 
   const discrepancySignals = [];
-  const interpretationSignals = [...profileBase.contextSignals];
+  const interpretationSignals = [...(profileBase.contextSignals || [])];
 
-  if (contextInput.settingDifference !== 'unknown') {
+  if (contextInput.challengeResponse && contextInput.challengeResponse !== 'unknown') {
+    interpretationSignals.push({
+      id: 'challenge-response',
+      prompt: contextInput.challengeResponse,
+      strength: 2
+    });
+  }
+
+  if (contextInput.settingDifference && contextInput.settingDifference !== 'unknown') {
     interpretationSignals.push({
       id: 'setting-difference',
       prompt: contextInput.settingDifference,
@@ -465,7 +457,20 @@ export function analyzeRichInterpretation({
     });
   }
 
-  if (homeInput.pattern !== 'unknown') {
+  if (contextInput.expressionDifference && contextInput.expressionDifference !== 'unknown') {
+    interpretationSignals.push({
+      id: 'expression-difference',
+      prompt:
+        contextInput.expressionDifference === 'oral-stronger'
+          ? 'Mondeling functioneren lijkt sterker dan schriftelijk functioneren.'
+          : contextInput.expressionDifference === 'written-stronger'
+            ? 'Schriftelijk functioneren lijkt sterker dan mondeling functioneren.'
+            : 'Het verschil tussen mondeling en schriftelijk functioneren wisselt per taak.',
+      strength: 1
+    });
+  }
+
+  if (homeInput.pattern && homeInput.pattern !== 'unknown') {
     interpretationSignals.push({
       id: 'home-pattern',
       prompt:
@@ -498,12 +503,12 @@ export function analyzeRichInterpretation({
       performanceLabel = 'overwegend sterk prestatiebeeld';
     } else if (
       maxScore - minScore >= 3 ||
-      (['begrijpendLezen', 'rekenen'].some(
+      ((['begrijpendLezen', 'rekenen'].some(
         (key) => knownTests.find((entry) => entry.key === key)?.numeric >= 3
-      ) &&
-        ['dmt', 'avi', 'spelling'].some(
+      )) &&
+        (['dmt', 'avi', 'spelling'].some(
           (key) => knownTests.find((entry) => entry.key === key)?.numeric <= 1
-        ))
+        )))
     ) {
       performanceLabel = 'discrepantie tussen inzicht en basisvaardigheid';
     } else if (averageScore < 1.5) {
@@ -512,9 +517,7 @@ export function analyzeRichInterpretation({
       performanceLabel = 'grillig of gemengd prestatiebeeld';
     }
 
-    performanceSummary = `Toetsbeeld op basis van ingevulde gegevens: ${performanceLabel}. ${summarizeTestLabels(
-      knownTests
-    )}.`;
+    performanceSummary = `Toetsbeeld op basis van ingevulde gegevens: ${performanceLabel}. ${summarizeTestLabels(knownTests)}.`;
   }
 
   if (
@@ -559,11 +562,17 @@ export function analyzeRichInterpretation({
     );
   }
 
+  if (contextInput.expressionDifference === 'oral-stronger') {
+    discrepancySignals.push(
+      'Mondeling functioneren lijkt sterker dan schriftelijke uitvoering. Dat kan wijzen op verschil tussen inzicht en uitvoering.'
+    );
+  }
+
   const interpretationSummaryParts = [];
 
-  if (profileBase.strongestObservations.length > 0) {
+  if ((profileBase.strongestObservations || []).length > 0) {
     interpretationSummaryParts.push(
-      `Sterkst meewegende observaties: ${profileBase.strongestObservations
+      `Sterkst meewegende observaties: ${(profileBase.strongestObservations || [])
         .slice(0, 3)
         .map((item) => item.prompt)
         .join('; ')}.`
